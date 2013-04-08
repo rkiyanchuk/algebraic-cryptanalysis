@@ -63,7 +63,10 @@ class Misty:
         y[8] = x[0] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[6] ^^ x[5] & x[6] ^^ x[0] & x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[6] & x[8] ^^ 1
         return y
 
-    def fi(self, x, ki1, ki2):
+    def fi(self, x, ki):
+        ki1 = ki[:self.fi_right_size]
+        ki2 = ki[self.fi_right_size:]
+
         left = x[:self.fi_left_size]
         right = x[self.fi_left_size:]
 
