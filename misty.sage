@@ -27,7 +27,7 @@ class Misty:
         }
 
 
-    def FL(self, x, kl1, kl2):
+    def fl(self, x, kl1, kl2):
         left = x[:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
 
@@ -62,6 +62,29 @@ class Misty:
         y[7] = x[1] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[2] & x[3] ^^ x[0] & x[4] ^^ x[5] ^^ x[1] & x[6] ^^ x[3] & x[6] ^^ x[0] & x[7] ^^ x[4] & x[7] ^^ x[6] & x[7] ^^ x[1] & x[8] ^^ 1
         y[8] = x[0] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[6] ^^ x[5] & x[6] ^^ x[0] & x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[6] & x[8] ^^ 1
         return y
+
+    def fi(self, x, ki1, ki2):
+        left = x[:self.fi_left_size]
+        right = x[self.fi_left_size:]
+
+        left = self.s9(left)
+        left = map(lambda a, b: a ^^ b, left, right + [0, 0])
+
+        temp = right; right = left; left = temp
+
+        left = self.s7(left)
+        left = map(lambda a, b: a ^^ b, left, right[:self.fi_right_size])
+        left = map(lambda a, b: a ^^ b, left, ki1)
+        right = map(lambda a, b: a ^^ b, right, ki2)
+
+        temp = right; right = left; left = temp
+
+        left = self.s9(left)
+        left = map(lambda a, b: a ^^ b, left, right + [0, 0])
+
+        temp = right; right = left; left = temp
+
+        return left + right
 
 
     def _varformatstr(self, name):
