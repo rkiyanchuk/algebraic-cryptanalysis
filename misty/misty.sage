@@ -94,6 +94,32 @@ class Misty:
 
         return d9 + d7
 
+    def fo(self, x, ko, ki):
+        ko = split(ko, 16)
+        ki = split(ki, 16)
+        t0 = x[self.halfblock_size_fo:]
+        t1 = x[0:self.halfblock_size_fo]
+
+
+        t0 = map(lambda a, b: a ^^ b, t0, ko[0])
+        res = self.fi(t0, ki[0])
+        print hex(Integer(res, 2)), hex(Integer(t1, 2))
+        t0 = map(lambda a, b: a ^^ b, res, t1)
+        print hex(Integer(t0, 2)), hex(Integer(t1, 2))
+
+        t1 = map(lambda a, b: a ^^ b, t1, ko[1])
+        t1 = map(lambda a, b: a ^^ b, self.fi(t1, ki[1]), t0)
+        print hex(Integer(t0, 2)), hex(Integer(t1, 2))
+
+        t0 = map(lambda a, b: a ^^ b, t0, ko[2])
+        t0 = map(lambda a, b: a ^^ b, self.fi(t0, ki[2]), t1)
+        print hex(Integer(t0, 2)), hex(Integer(t1, 2))
+
+        t1 = map(lambda a, b: a ^^ b, t1, ko[3])
+
+        print hex(Integer(t0, 2)), hex(Integer(t1, 2))
+        return t0 + t1
+
     def reorder(self, x):
         bytes = split(x, 8)
         r1 = bytes[0::2]
