@@ -80,16 +80,19 @@ class Misty:
         return y
 
     def fi(self, x, ki):
-        ki1 = ki[:self.fi_right_size]
-        ki2 = ki[self.fi_right_size:]
+        ki9 = ki[:9]
+        ki7 = ki[9:]
 
-        left = x[:self.fi_left_size]
-        right = x[self.fi_left_size:]
+        d7 = x[0:7]
+        d9 = x[7:16]
 
-        left = self.s9(left)
-        left = map(lambda a, b: a ^^ b, left, right + [0, 0])
+        d9 = map(lambda a, b: a ^^ b, self.s9(d9), d7 + [0, 0])
+        d7 = map(lambda a, b: a ^^ b, self.s7(d7), d9[0:7])
+        d7 = map(lambda a, b: a ^^ b, d7, ki7)
+        d9 = map(lambda a, b: a ^^ b, d9, ki9)
+        d9 = map(lambda a, b: a ^^ b, self.s9(d9), d7 + [0, 0])
 
-        temp = right; right = left; left = temp
+        return d9 + d7
 
         left = self.s7(left)
         left = map(lambda a, b: a ^^ b, left, right[:self.fi_right_size])
