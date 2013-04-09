@@ -94,19 +94,24 @@ class Misty:
 
         return d9 + d7
 
-        left = self.s7(left)
-        left = map(lambda a, b: a ^^ b, left, right[:self.fi_right_size])
-        left = map(lambda a, b: a ^^ b, left, ki1)
-        right = map(lambda a, b: a ^^ b, right, ki2)
+    def reorder(self, x):
+        bytes = split(x, 8)
+        r1 = bytes[0::2]
+        r2 = bytes[1::2]
+        return flatten(zip(r2, r1))
 
-        temp = right; right = left; left = temp
+    def key_schedule(self, key):
+        k = self.reorder(key)
+        key_chunks = split(k, 16)
 
-        left = self.s9(left)
-        left = map(lambda a, b: a ^^ b, left, right + [0, 0])
-
-        temp = right; right = left; left = temp
-
-        return left + right
+        subkeys = list()
+        for k in range(len(key_chunks)):
+            print key_chunks[k]
+            if k < 7:
+                subkeys.append(self.fi(key_chunks[k], key_chunks[k + 1]))
+            else:
+                subkeys.append(self.fi(key_chunks[k], key_chunks[0]))
+        return subkeys
 
 
     def _varformatstr(self, name):
