@@ -11,6 +11,22 @@ __email__ = 'ruslan.kiianchuk@gmail.com'
 __version__ = '0.1'
 
 
+def split(l, chunk_size):
+    """Split flat list into nested lists of length `chunk_size`. If the
+    `chunk_size` is not multiple of list length, the last sublist is added as
+    is without padding.
+
+    Args:
+        l: List to split into chunks.
+        chunk_size: Length of a single nested list.
+
+    Returns:
+        Nested list of chunks each of the length `chunk_size`.
+
+    """
+    return [l[i:i + chunk_size] for i in xrange(0, len(l), chunk_size)]
+
+
 class Misty:
 
     def __init__(self):
