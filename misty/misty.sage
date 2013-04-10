@@ -142,6 +142,21 @@ class Misty:
 
         return d0 + d1
 
+    def encipher(self, data, key):
+        data = self.reorder(data)
+        subkeys = self.key_schedule(key)
+        for i in range(1, self.nrounds + 1, 2):
+            data = self.feistel_round(data, subkeys, i)
+
+        d0 = data[self.halfblock_size:]
+        d1 = data[0:self.halfblock_size]
+        # FL1
+        d0 = self.fl(d0, subkeys, self.nrounds + 1)
+        # FL2
+        d1 = self.fl(d1, subkeys, self.nrounds + 2)
+        return d0 + d1
+
+
     def reorder(self, x):
         bytes = split(x, 8)
         r1 = bytes[0::2]
