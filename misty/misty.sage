@@ -43,9 +43,15 @@ class Misty:
         }
 
 
-    def fl(self, x, kl1, kl2):
+    def fl(self, x, subkeys, i):
         left = x[:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
+
+        while i > 8: i = i - 8
+        kl1 = subkeys[(i + 1) // 2 - 1] if i % 2 == 1 else subkeys[i // 2 + 2 - 1]
+        k = (i + 1) // 2 + 6
+        if k > 8: k = k - 8
+        kl2 = subkeys[k - 1] if i % 2 == 1 else subkeys[i // 2 + 4 - 1]
 
         temp = map(lambda a, b: a & b, left, kl1)
         right = map(lambda a, b: a ^^ b, right, temp)
