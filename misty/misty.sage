@@ -118,6 +118,30 @@ class Misty:
 
         return t0 + t1
 
+    def feistel_round(self, data, subkeys, i):
+        d0 = data[self.halfblock_size:]
+        d1 = data[0:self.halfblock_size]
+
+        # FL1
+        d0 = self.fl(d0, subkeys, i)
+        # FL2
+        d1 = self.fl(d1, subkeys, i + 1)
+
+        while i > 8: i = i - 8
+        # FO1
+        i = i - 1  # Avoid working with 1 <= i <= 8, switch to modulo 8.
+        ko = [subkeys[i % 8], subkeys[(i + 2) % 8], subkeys[(i + 7) % 8], subkeys[(i + 4) % 8]]
+        ki = [subkeys[(i + 5) % 8], subkeys[(i + 1) % 8], subkeys[(i + 3) % 8]]
+        d1 = map(lambda a, b: a ^^ b, self.fo(d0, ko, ki), d1)
+
+        ## FO2
+        i = (i + 1) % 8  # Increase for next pseudo-round.
+        ko = [subkeys[i % 8], subkeys[(i + 2) % 8], subkeys[(i + 7) % 8], subkeys[(i + 4) % 8]]
+        ki = [subkeys[(i + 5) % 8], subkeys[(i + 1) % 8], subkeys[(i + 3) % 8]]
+        d0 = map(lambda a, b: a ^^ b, self.fo(d1, ko, ki), d0)
+
+        return d0 + d1
+
     def reorder(self, x):
         bytes = split(x, 8)
         r1 = bytes[0::2]
