@@ -139,6 +139,42 @@ class Misty:
 
         return subkeys[i - 1]
 
+    def fi(self, x, subkey_ki):
+        """Misty FI function.
+
+        Args:
+            x: 16-bit input value.
+            subkey_ki: 16-bit KI key chunk for FI function.
+
+        Returns: 16-bit output of FI function.
+
+        """
+        ki9 = subkey_ki[0:self.fi_left_size]
+        ki7 = subkey_ki[self.fi_left_size:]
+
+        d9 = x[0:self.fi_left_size]
+        d7 = x[self.fi_left_size:]
+
+        #print 'd7:', hex(self.get_integer(d7))
+        print 'd9:', hex(self.get_integer(self.s9(d9)))
+        d9 = vector_do(operator.__xor__, self.s9(d9), d7 + [0, 0])
+        d7 = vector_do(operator.__xor__, self.s7(d7), d9[0:self.fi_right_size])
+        d7 = vector_do(operator.__xor__, d7, ki7)
+        d9 = vector_do(operator.__xor__, d9, ki9)
+        d9 = vector_do(operator.__xor__, self.s9(d9), d7 + [0, 0])
+        return d7 + d9
+
+    def key_schedule(self, key):
+        key_chunks = split(key, 16)
+
+        subkeys = list()
+        for k in range(len(key_chunks)):
+            if k < 7:
+                subkeys.append(self.fi(key_chunks[k], key_chunks[k + 1]))
+            else:
+                subkeys.append(self.fi(key_chunks[k], key_chunks[0]))
+        return subkeys
+
     def fl(self, x, subkeys, i):
         left = x[:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
@@ -178,20 +214,6 @@ class Misty:
         y[8] = x[0] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[6] ^^ x[5] & x[6] ^^ x[0] & x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[6] & x[8] ^^ 1
         return y
 
-    def fi(self, x, ki):
-        ki9 = ki[0:self.fi_left_size]
-        ki7 = ki[self.fi_left_size:]
-
-        d7 = x[0:self.fi_right_size]
-        d9 = x[self.fi_right_size:]
-
-        d9 = map(lambda a, b: a ^^ b, self.s9(d9), d7 + [0, 0])
-        d7 = map(lambda a, b: a ^^ b, self.s7(d7), d9[0:self.fi_right_size])
-        d7 = map(lambda a, b: a ^^ b, d7, ki7)
-        d9 = map(lambda a, b: a ^^ b, d9, ki9)
-        d9 = map(lambda a, b: a ^^ b, self.s9(d9), d7 + [0, 0])
-
-        return d9 + d7
 
     def fo(self, x, ko, ki):
         t0 = x[self.halfblock_size_fo:]
@@ -248,18 +270,6 @@ class Misty:
         # FL2
         d1 = self.fl(d1, subkeys, self.nrounds + 2)
         return d0 + d1
-
-    def key_schedule(self, key):
-        k = self.reorder(key)
-        key_chunks = split(k, 16)
-
-        subkeys = list()
-        for k in range(len(key_chunks)):
-            if k < 7:
-                subkeys.append(self.fi(key_chunks[k], key_chunks[k + 1]))
-            else:
-                subkeys.append(self.fi(key_chunks[k], key_chunks[0]))
-        return subkeys
 
 
     def _varformatstr(self, name):
