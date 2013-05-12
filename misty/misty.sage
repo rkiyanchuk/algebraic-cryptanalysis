@@ -149,8 +149,8 @@ class Misty:
         Returns: 16-bit output of FI function.
 
         """
-        ki9 = subkey_ki[0:self.fi_left_size]
-        ki7 = subkey_ki[self.fi_left_size:]
+        ki7 = subkey_ki[0:self.fi_right_size]
+        ki9 = subkey_ki[self.fi_right_size:]
 
         d9 = x[0:self.fi_left_size]
         d7 = x[self.fi_left_size:]
