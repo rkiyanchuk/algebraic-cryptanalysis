@@ -61,9 +61,9 @@ class Misty:
 
     """
 
-    def get_bits(self, integer):
+    def get_bits(self, integer, nbytes=0):
         """Convert integer to crazy Misty bit ordering. """
-        bytes = reverse(integer.digits(256))
+        bytes = reverse(integer.digits(256, padto=nbytes))
         bits = [reverse(b.digits(2, padto=8)) for b in bytes]
         return flatten(bits)
 
