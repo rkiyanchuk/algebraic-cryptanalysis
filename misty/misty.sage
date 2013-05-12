@@ -33,6 +33,18 @@ def reverse(iterable):
 
 class Misty:
 
+    def get_bits(self, integer):
+        """Convert integer to crazy Misty bit ordering. """
+        bytes = reverse(integer.digits(256))
+        bits = [reverse(b.digits(2, padto=8)) for b in bytes]
+        return flatten(bits)
+
+    def get_integer(self, bits):
+        """Convert crazy Misty bit sequence to sane ordering. """
+        bytes = reverse(split(bits, 8))
+        bytes = [reverse(b) for b in bytes]
+        return Integer(flatten(bytes), 2)
+
     def __init__(self):
         self.nrounds = 8
         self.block_size = 64
@@ -159,13 +171,6 @@ class Misty:
         # FL2
         d1 = self.fl(d1, subkeys, self.nrounds + 2)
         return d0 + d1
-
-
-    def reorder(self, x):
-        bytes = split(x, 8)
-        r1 = bytes[0::2]
-        r2 = bytes[1::2]
-        return flatten(zip(r2, r1))
 
     def key_schedule(self, key):
         k = self.reorder(key)
