@@ -213,25 +213,36 @@ class Misty:
         y[8] = x[0] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[6] ^^ x[5] & x[6] ^^ x[0] & x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[6] & x[8] ^^ 1
         return reverse(y)
 
+    def fo(self, x, subkeys, i):
+        left = x[0:self.halfblock_size_fo]
+        right = x[self.halfblock_size_fo:]
+
+        ki1 = self.kindex(self.KEY_KI1, subkeys, i)
+        ki2 = self.kindex(self.KEY_KI2, subkeys, i)
+        ki3 = self.kindex(self.KEY_KI3, subkeys, i)
+
+        ko1 = self.kindex(self.KEY_KO1, subkeys, i)
+        ko2 = self.kindex(self.KEY_KO2, subkeys, i)
+        ko3 = self.kindex(self.KEY_KO3, subkeys, i)
+        ko4 = self.kindex(self.KEY_KO4, subkeys, i)
+
+        left = vector_do(operator.__xor__, left, ko1)
+        temp = self.fi(left, ki1)
+        left = vector_do(operator.__xor__, temp, right)
+
+        right = vector_do(operator.__xor__, right, ko2)
+        temp = self.fi(right, ki2)
+        right = vector_do(operator.__xor__, left, temp)
+
+        left = vector_do(operator.__xor__, left, ko3)
+        temp = self.fi(left, ki3)
+        left = vector_do(operator.__xor__, temp, right)
+
+        right = vector_do(operator.__xor__, right, ko4)
+
+        return right + left
+
     ##########################################################################
-
-    def fo(self, x, ko, ki):
-        t0 = x[self.halfblock_size_fo:]
-        t1 = x[0:self.halfblock_size_fo]
-
-        t0 = map(lambda a, b: a ^^ b, t0, ko[0])
-        res = self.fi(t0, ki[0])
-        t0 = map(lambda a, b: a ^^ b, res, t1)
-
-        t1 = map(lambda a, b: a ^^ b, t1, ko[1])
-        t1 = map(lambda a, b: a ^^ b, self.fi(t1, ki[1]), t0)
-
-        t0 = map(lambda a, b: a ^^ b, t0, ko[2])
-        t0 = map(lambda a, b: a ^^ b, self.fi(t0, ki[2]), t1)
-
-        t1 = map(lambda a, b: a ^^ b, t1, ko[3])
-
-        return t0 + t1
 
     def feistel_round(self, data, subkeys, i):
         d0 = data[self.halfblock_size:]
