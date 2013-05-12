@@ -155,13 +155,11 @@ class Misty:
         d9 = x[0:self.fi_left_size]
         d7 = x[self.fi_left_size:]
 
-        #print 'd7:', hex(self.get_integer(d7))
-        print 'd9:', hex(self.get_integer(self.s9(d9)))
-        d9 = vector_do(operator.__xor__, self.s9(d9), d7 + [0, 0])
-        d7 = vector_do(operator.__xor__, self.s7(d7), d9[0:self.fi_right_size])
+        d9 = vector_do(operator.__xor__, self.s9(d9), [0, 0] + d7)
+        d7 = vector_do(operator.__xor__, self.s7(d7), d9[2:self.fi_left_size])
         d7 = vector_do(operator.__xor__, d7, ki7)
         d9 = vector_do(operator.__xor__, d9, ki9)
-        d9 = vector_do(operator.__xor__, self.s9(d9), d7 + [0, 0])
+        d9 = vector_do(operator.__xor__, self.s9(d9), [0, 0] + d7)
         return d7 + d9
 
     def key_schedule(self, key):
