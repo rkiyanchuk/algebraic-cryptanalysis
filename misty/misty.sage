@@ -8,7 +8,7 @@ MISTY block cipher polynomial system generator.
 
 __author__ = 'Ruslan Kiianchuk'
 __email__ = 'ruslan.kiianchuk@gmail.com'
-__version__ = '0.1'
+__version__ = '0.9'
 
 
 import operator
@@ -96,7 +96,8 @@ class Misty:
 
         Args:
             subkey_type: string, indicating subkey type.
-            subkeys: list of subkey bits (each element contains 16 subkey bits).
+            subkeys: list of subkey bits (each element contains 16 subkey
+                bits).
             i: Misty round in range 1 <= i <= 8.
 
         Returns:
@@ -106,38 +107,46 @@ class Misty:
             raise ValueError('Subkey index must start from 1. '
                              'Got {0} instead.'.format(i))
 
-        if subkey_type == self.KEY_KO1:
-            i = i
-        if subkey_type == self.KEY_KO2:
-            i = i + 2
-        if subkey_type == self.KEY_KO3:
-            i = i + 7
-        if subkey_type == self.KEY_KO4:
-            i = i + 4
+        def normalize(x):
+            while x > 8:
+                x = x - 8
+            return x
 
+        if subkey_type == self.KEY_KO1:
+            return self.key[i - 1]
+        if subkey_type == self.KEY_KO2:
+            i = normalize(i + 2)
+            return self.key[i - 1]
+        if subkey_type == self.KEY_KO3:
+            i = normalize(i + 7)
+            return self.key[i - 1]
+        if subkey_type == self.KEY_KO4:
+            i = normalize(i + 4)
+            return self.key[i - 1]
         if subkey_type == self.KEY_KI1:
-            i = i + 5
+            i = normalize(i + 5)
+            return subkeys[i - 1]
         if subkey_type == self.KEY_KI2:
-            i = i + 1
+            i = normalize(i + 1)
+            return subkeys[i - 1]
         if subkey_type == self.KEY_KI3:
-            i = i + 3
+            i = normalize(i + 3)
+            return subkeys[i - 1]
 
         if subkey_type == self.KEY_KL1:
             if i % 2 != 0:
-                i = (i + 2) // 2
+                i = normalize((i + 1) // 2)
+                return self.key[i - 1]
             else:
-                i = (i // 2) + 2
+                i = normalize((i // 2) + 2)
+                return subkeys[i - 1]
         if subkey_type == self.KEY_KL2:
             if i % 2 != 0:
-                i = (i + 1) // 2 + 6
+                i = normalize((i + 1) // 2 + 6)
+                return subkeys[i - 1]
             else:
-                i = (i // 2) + 4
-
-        # Normalize index.
-        while i > 8:
-            i = i - 8
-
-        return subkeys[i - 1]
+                i = normalize((i // 2) + 4)
+                return self.key[i - 1]
 
     def fi(self, x, subkey_ki):
         """Misty FI function.
@@ -164,6 +173,7 @@ class Misty:
 
     def key_schedule(self, key):
         key_chunks = split(key, 16)
+        self.key = key_chunks
 
         subkeys = list()
         for k in range(len(key_chunks)):
@@ -242,46 +252,37 @@ class Misty:
 
         return right + left
 
-    ##########################################################################
-
     def feistel_round(self, data, subkeys, i):
-        d0 = data[self.halfblock_size:]
-        d1 = data[0:self.halfblock_size]
+        left = data[0:self.halfblock_size]
+        right = data[self.halfblock_size:]
 
         # FL1
-        d0 = self.fl(d0, subkeys, i)
+        left = self.fl(left, subkeys, i)
         # FL2
-        d1 = self.fl(d1, subkeys, i + 1)
+        right = self.fl(right, subkeys, i + 1)
 
-        while i > 8: i = i - 8
         # FO1
-        i = i - 1  # Avoid working with 1 <= i <= 8, switch to modulo 8.
-        ko = [subkeys[i % 8], subkeys[(i + 2) % 8], subkeys[(i + 7) % 8], subkeys[(i + 4) % 8]]
-        ki = [subkeys[(i + 5) % 8], subkeys[(i + 1) % 8], subkeys[(i + 3) % 8]]
-        d1 = map(lambda a, b: a ^^ b, self.fo(d0, ko, ki), d1)
+        temp = self.fo(left, subkeys, i)
+        right = vector_do(operator.__xor__, right, temp)
 
-        ## FO2
-        i = (i + 1) % 8  # Increase for next pseudo-round.
-        ko = [subkeys[i % 8], subkeys[(i + 2) % 8], subkeys[(i + 7) % 8], subkeys[(i + 4) % 8]]
-        ki = [subkeys[(i + 5) % 8], subkeys[(i + 1) % 8], subkeys[(i + 3) % 8]]
-        d0 = map(lambda a, b: a ^^ b, self.fo(d1, ko, ki), d0)
+        # FO2
+        temp = self.fo(right, subkeys, i + 1)
+        left = vector_do(operator.__xor__, temp, left)
 
-        return d0 + d1
+        return left + right
 
     def encipher(self, data, key):
-        data = self.reorder(data)
         subkeys = self.key_schedule(key)
         for i in range(1, self.nrounds + 1, 2):
             data = self.feistel_round(data, subkeys, i)
 
-        d0 = data[self.halfblock_size:]
-        d1 = data[0:self.halfblock_size]
-        # FL1
-        d0 = self.fl(d0, subkeys, self.nrounds + 1)
-        # FL2
-        d1 = self.fl(d1, subkeys, self.nrounds + 2)
-        return d0 + d1
-
+        left = data[0:self.halfblock_size]
+        right = data[self.halfblock_size:]
+        # FL n+1
+        left = self.fl(left, subkeys, self.nrounds + 1)
+        # FL n+2
+        right = self.fl(right, subkeys, self.nrounds + 2)
+        return right + left
 
     def _varformatstr(self, name):
         """Prepare formatting string for variables notation.
