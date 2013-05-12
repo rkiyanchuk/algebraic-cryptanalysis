@@ -42,6 +42,9 @@ def vector_do(operation, a, b):
         a: first vector.
         b: second vector.
 
+    Returns:
+        Resulting vector (represented as list).
+
     Example:
         vector_do(operator.__xor__, [1, 1, 1], [1, 0, 1])
 
@@ -95,6 +98,9 @@ class Misty:
             subkey_type: string, indicating subkey type.
             subkeys: list of subkey bits (each element contains 16 subkey bits).
             i: Misty round in range 1 <= i <= 8.
+
+        Returns:
+            16-bit subkey for corresponding index.
         """
         if i < 1:
             raise ValueError('Subkey index must start from 1. '
