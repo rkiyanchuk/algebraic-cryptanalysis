@@ -11,6 +11,9 @@ __email__ = 'ruslan.kiianchuk@gmail.com'
 __version__ = '0.1'
 
 
+import operator
+
+
 def split(l, chunk_size):
     """Split flat list into nested lists of length `chunk_size`. If the
     `chunk_size` is not multiple of list length, the last sublist is added as
@@ -29,6 +32,21 @@ def split(l, chunk_size):
 
 def reverse(iterable):
     return list(reversed(iterable))
+
+
+def vector_do(operation, a, b):
+    """Perform vector operation on two lists.
+
+    Args:
+        operation: binary operation to perform (from `operator` module).
+        a: first vector.
+        b: second vector.
+
+    Example:
+        vector_do(operator.__xor__, [1, 1, 1], [1, 0, 1])
+
+    """
+    return map(lambda x, y: operation(x, y), a, b)
 
 
 class Misty:
@@ -108,21 +126,19 @@ class Misty:
         print 'index:', i
         return subkeys[i - 1]
 
+
     def fl(self, x, subkeys, i):
         left = x[:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
 
-        while i > 8: i = i - 8
-        kl1 = subkeys[(i + 1) // 2 - 1] if i % 2 == 1 else subkeys[i // 2 + 2 - 1]
-        k = (i + 1) // 2 + 6
-        if k > 8: k = k - 8
-        kl2 = subkeys[k - 1] if i % 2 == 1 else subkeys[i // 2 + 4 - 1]
+        kl1 = self.kindex(self.KEY_KL1, subkeys, i)
+        kl2 = self.kindex(self.KEY_KL2, subkeys, i)
 
-        temp = map(lambda a, b: a & b, left, kl1)
-        right = map(lambda a, b: a ^^ b, right, temp)
+        temp = vector_do(operator.__and__, left, kl1)
+        right = vector_do(operator.__xor__, right, temp)
 
-        temp = map(lambda a, b: a | b, right, kl2)
-        left = map(lambda a, b: a ^^ b, left, temp)
+        temp = vector_do(operator.__or__, right, kl2)
+        left = vector_do(operator.__xor__, left, temp)
         return left + right
 
     def s7(self, x):
