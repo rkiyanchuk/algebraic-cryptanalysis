@@ -52,12 +52,61 @@ class Misty:
         self.halfblock_size_fo = self.halfblock_size // 2
         self.fi_left_size = 9
         self.fi_right_size = 7
-        self.var_names = {
-                'in': 'X',
-                'key': 'K',
-                'sum': 'S',
-        }
+        # Subkey type constants.
+        self.KEY_KO1 = 'ko1'
+        self.KEY_KO2 = 'ko2'
+        self.KEY_KO3 = 'ko3'
+        self.KEY_KO4 = 'ko4'
+        self.KEY_KI1 = 'ki1'
+        self.KEY_KI2 = 'ki2'
+        self.KEY_KI3 = 'ki3'
+        self.KEY_KL1 = 'kl1'
+        self.KEY_KL2 = 'kl2'
 
+    def kindex(self, subkey_type, subkeys, i):
+        """Index subkey according to crazy Misty indexing rule.
+
+        Args:
+            subkey_type: string, indicating subkey type.
+            subkeys: list of subkey bits (each element contains 16 subkey bits).
+            i: Misty round in range 1 <= i <= 8.
+        """
+        if i < 1:
+            raise ValueError('Subkey index must start from 1. '
+                             'Got {0} instead.'.format(i))
+
+        if subkey_type == self.KEY_KO1:
+            i = i
+        if subkey_type == self.KEY_KO2:
+            i = i + 2
+        if subkey_type == self.KEY_KO3:
+            i = i + 7
+        if subkey_type == self.KEY_KO4:
+            i = i + 4
+
+        if subkey_type == self.KEY_KI1:
+            i = i + 5
+        if subkey_type == self.KEY_KI2:
+            i = i + 1
+        if subkey_type == self.KEY_KI3:
+            i = i + 3
+
+        if subkey_type == self.KEY_KL1:
+            if i % 2 != 0:
+                i = (i + 2) // 2
+            else:
+                i = (i // 2) + 2
+        if subkey_type == self.KEY_KL2:
+            if i % 2 != 0:
+                i = (i + 1) // 2 + 6
+            else:
+                i = (i // 2) + 4
+
+        # Normalize index.
+        while i > 8:
+            i = i - 8
+        print 'index:', i
+        return subkeys[i - 1]
 
     def fl(self, x, subkeys, i):
         left = x[:self.halfblock_size_fo]
