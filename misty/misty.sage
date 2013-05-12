@@ -50,6 +50,13 @@ def vector_do(operation, a, b):
 
 
 class Misty:
+    """Misty cipher class.
+
+    All method assume to take bit sequences as input. Use `get_bits` method to
+    convert integer to Misty bit sequence representation and `get_integer` to
+    obtain the corresponding integer back.
+
+    """
 
     def get_bits(self, integer):
         """Convert integer to crazy Misty bit ordering. """
