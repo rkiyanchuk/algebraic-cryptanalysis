@@ -27,6 +27,10 @@ def split(l, chunk_size):
     return [l[i:i + chunk_size] for i in xrange(0, len(l), chunk_size)]
 
 
+def reverse(iterable):
+    return list(reversed(iterable))
+
+
 class Misty:
 
     def __init__(self):
