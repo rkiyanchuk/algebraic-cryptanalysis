@@ -123,9 +123,8 @@ class Misty:
         # Normalize index.
         while i > 8:
             i = i - 8
-        print 'index:', i
-        return subkeys[i - 1]
 
+        return subkeys[i - 1]
 
     def fl(self, x, subkeys, i):
         left = x[:self.halfblock_size_fo]
