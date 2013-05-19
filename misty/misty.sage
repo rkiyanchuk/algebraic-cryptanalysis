@@ -471,6 +471,15 @@ class Misty(object):
         var_names += self._varstrs('FL_KL2', 16, round)
         var_names += self._varstrs('FL_XOR', 16, round)
         var_names += self._varstrs('FL', 32, round)
+        # FI
+        for i in range(1, 4):
+            # FI has 3 subrounds in FO function.
+            var_names += self._varstrs('FI' + str(i), 16, round)
+            var_names += self._varstrs('FI' + str(i) + '_S9', 9, round)
+            var_names += self._varstrs('FI' + str(i) + '_S7', 7, round)
+            var_names += self._varstrs('FI' + str(i) + '_SS9', 9, round)
+            var_names += self._varstrs('FI' + str(i) + '_KI2', 16, round)
+
         return var_names
 
     def gen_ring(self):
@@ -530,3 +539,46 @@ class Misty(object):
         polynomials.extend(vector_do(operator.__xor__, vars_xor, vars_out[16:]))
 
         return flatten(polynomials)
+
+    def polynomials_fi(self, x, subkey_ki, subround, r):
+        """Construct polynomials for Misty FI function.
+
+        Args:
+            x: list of 16 input variables.
+            subkey_ki: 16-bit key chunk.
+            subround: number of FI round in FO function (1..3).
+            r: number of actual outer Feistel network enciphering round.
+
+        """
+        ki7 = subkey_ki[0:self.fi_right_size]
+        ki9 = subkey_ki[self.fi_right_size:]
+
+        d9 = x[0:self.fi_left_size]
+        d7 = x[self.fi_left_size:]
+
+        vars_fi = self._vars('FI' + str(subround), 16, r)
+        vars_s9 = self._vars('FI' + str(subround) + '_S9', 9, r)
+        vars_s7 = self._vars('FI' + str(subround) + '_S7', 7, r)
+        vars_ss9 = self._vars('FI' + str(subround) + '_SS9', 9, r)
+        vars_ki2 = self._vars('FI' + str(subround) + '_KI2', 9, r)
+
+        polynomials = list()
+        pad = [self.ring(0)] * 2
+
+        polynomials.extend(self.s9(d9, vars_s9))
+        d9 = vector_do(operator.__xor__, vars_s9, pad + d7) # add to pols
+
+        polynomials.extend(self.s7(d7, vars_s7))
+        d7 = vector_do(operator.__xor__, vars_s7, d9[2:self.fi_left_size]) # add to pols
+        d7 = vector_do(operator.__xor__, d7, ki7)
+
+        d9 = vector_do(operator.__xor__, d9, ki9)
+        polynomials.extend(vector_do(operator.__xor__, d9, vars_ki2))
+
+        polynomials.extend(self.s9(vars_ki2, vars_ss9))
+        d9 = vector_do(operator.__xor__, vars_ss9, pad + d7) # add to pols
+
+        polynomials.extend(vector_do(operator.__xor__, vars_fi[0:7], d7))
+        polynomials.extend(vector_do(operator.__xor__, vars_fi[7:16], d9))
+        return polynomials
+

@@ -104,4 +104,26 @@ def test_fl():
     expected = m.fl(plain, 1)
     return values == expected
 
+
+def test_fi():
+    m = Misty()
+
+    plain = m._vars('IN', 16)
+    subkey = m._vars('K', 16)
+
+    polynomials = m.polynomials_fi(plain, subkey, 1, 1)
+    F = PolynomialSequence(polynomials)
+    F = inject(F, m._vars('IN', 16), [1]*16)
+    F = inject(F, m._vars('K', 16), [1]*16)
+    result = sat_solve(F)
+
+    values = get_vars(result[0], m._vars('FI1', 16, 1))
+
+    plain = [1]*16
+    subkey = [1]*16
+
+    expected = m.fi(plain, subkey)
+    return values == expected
+
 print 'Test FL...', test_fl()
+print 'Test FI...', test_fi()
