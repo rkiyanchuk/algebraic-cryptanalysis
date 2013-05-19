@@ -33,17 +33,17 @@ def get_vars(solution, vars):
 
 load('misty.sage')
 m = Misty()
+print 'Test Misty...', m.selftest()
 
 
 def test_fl():
     m = Misty()
+
     plain = m._vars('IN', 32)
-    key = m._vars('K', 128)
-    subkeys = split(m._vars('KS', 128), 16)
+    m.subkeys = split(m._vars('KS', 128), 16)
+    m.key = split(m._vars('K', 128), 16)
 
-    m.key = split(key, 16)
-
-    polynomials = m.polynomials_fl(plain, subkeys, 1)
+    polynomials = m.polynomials_fl(plain, 1)
     F = PolynomialSequence(polynomials)
     F = inject(F, m._vars('IN', 32), [1]*32)
     F = inject(F, m._vars('K', 128), [1]*128)
@@ -52,10 +52,10 @@ def test_fl():
     values = get_vars(result[0], m._vars('FL', 32, 1))
 
     plain = [1] * 32
-    subkeys = [ [1]*16 ] * 8
-    key = subkeys
-    m.key = key
-    expected = m.fl(plain, subkeys, 1)
+    m.subkeys = [[1]*16] * 8
+    m.key = [[1]*16] * 8
+
+    expected = m.fl(plain, 1)
     return values == expected
 
-print 'Testing FL...', test_fl()
+print 'Test FL...', test_fl()

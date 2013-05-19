@@ -52,7 +52,30 @@ def vector_do(operation, a, b):
         vector_do(operator.__xor__, [1, 1, 1], [1, 0, 1])
 
     """
-    return map(lambda x, y: operation(x, y), a, b)
+    if operation is operator.__xor__:
+        if is_constant(a) and is_constant(b):
+            return map(lambda x, y: operation(x, y), a, b)
+        else:
+            # Process variables over Boolean Polynomial Ring correctly.
+            return map(lambda x, y: operator.__add__(x, y), a, b)
+    elif operation is operator.__and__:
+        if is_constant(a) and is_constant(b):
+            return map(lambda x, y: operation(x, y), a, b)
+        else:
+            # Process variables over Boolean Polynomial Ring correctly.
+            return map(lambda x, y: operator.__mul__(x, y), a, b)
+    elif operation is operator.__or__:
+        if is_constant(a) and is_constant(b):
+            return map(lambda x, y: operation(x, y), a, b)
+        else:
+            # Process variables over Boolean Polynomial Ring correctly.
+            return map(lambda x, y: x * y + x + y, a, b)
+    else:
+        return map(lambda x, y: operation(x, y), a, b)
+
+
+def is_constant(vals):
+    return all([isinstance(i, Integer) for i in vals])
 
 
 class Misty(object):
@@ -88,6 +111,9 @@ class Misty(object):
         self.halfblock_size_fo = self.halfblock_size // 2
         self.fi_left_size = 9
         self.fi_right_size = 7
+        self.key = None
+        self.subkeys = None
+        self.gen_ring()
         # Subkey type constants.
         self.KEY_KO1 = 'ko1'
         self.KEY_KO2 = 'ko2'
@@ -99,7 +125,7 @@ class Misty(object):
         self.KEY_KL1 = 'kl1'
         self.KEY_KL2 = 'kl2'
 
-    def kindex(self, subkey_type, subkeys, i):
+    def kindex(self, subkey_type, i):
         """Index subkey according to crazy Misty indexing rule.
 
         Args:
@@ -133,13 +159,13 @@ class Misty(object):
             return self.key[i - 1]
         if subkey_type == self.KEY_KI1:
             i = normalize(i + 5)
-            return subkeys[i - 1]
+            return self.subkeys[i - 1]
         if subkey_type == self.KEY_KI2:
             i = normalize(i + 1)
-            return subkeys[i - 1]
+            return self.subkeys[i - 1]
         if subkey_type == self.KEY_KI3:
             i = normalize(i + 3)
-            return subkeys[i - 1]
+            return self.subkeys[i - 1]
 
         if subkey_type == self.KEY_KL1:
             if i % 2 != 0:
@@ -147,11 +173,11 @@ class Misty(object):
                 return self.key[i - 1]
             else:
                 i = normalize((i // 2) + 2)
-                return subkeys[i - 1]
+                return self.subkeys[i - 1]
         if subkey_type == self.KEY_KL2:
             if i % 2 != 0:
                 i = normalize((i + 1) // 2 + 6)
-                return subkeys[i - 1]
+                return self.subkeys[i - 1]
             else:
                 i = normalize((i // 2) + 4)
                 return self.key[i - 1]
@@ -197,14 +223,26 @@ class Misty(object):
                 subkeys.append(self.fi(key_chunks[k], key_chunks[k + 1]))
             else:
                 subkeys.append(self.fi(key_chunks[k], key_chunks[0]))
+        if self.subkeys is None:
+            self.subkeys = subkeys
         return subkeys
 
-    def fl(self, x, subkeys, i):
+    def fl(self, x, i):
+        """Misty key injection FL function.
+
+        Args:
+            x: 32-bit input.
+            i: number of round.
+
+        Returns:
+            Resulting 32 bits after key injection.
+
+        """
         left = x[:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
 
-        kl1 = self.kindex(self.KEY_KL1, subkeys, i)
-        kl2 = self.kindex(self.KEY_KL2, subkeys, i)
+        kl1 = self.kindex(self.KEY_KL1, i)
+        kl2 = self.kindex(self.KEY_KL2, i)
 
         temp = vector_do(operator.__and__, left, kl1)
         right = vector_do(operator.__xor__, right, temp)
@@ -217,42 +255,77 @@ class Misty(object):
         """Substitute with Misty S7 SBox. """
         x = reverse(x)
         y = [0] * len(x)
-        y[0] = x[0] ^^ x[1] & x[3] ^^ x[0] & x[3] & x[4] ^^ x[1] & x[5] ^^ x[0] & x[2] & x[5] ^^ x[4] & x[5] ^^ x[0] & x[1] & x[6] ^^ x[2] & x[6] ^^ x[0] & x[5] & x[6] ^^ x[3] & x[5] & x[6] ^^ 1
-        y[1] = x[0] & x[2] ^^ x[0] & x[4] ^^ x[3] & x[4] ^^ x[1] & x[5] ^^ x[2] & x[4] & x[5] ^^ x[6] ^^ x[0] & x[6] ^^ x[3] & x[6] ^^ x[2] & x[3] & x[6] ^^ x[1] & x[4] & x[6] ^^ x[0] & x[5] & x[6] ^^ 1
-        y[2] = x[1] & x[2] ^^ x[0] & x[2] & x[3] ^^ x[4] ^^ x[1] & x[4] ^^ x[0] & x[1] & x[4] ^^ x[0] & x[5] ^^ x[0] & x[4] & x[5] ^^ x[3] & x[4] & x[5] ^^ x[1] & x[6] ^^ x[3] & x[6] ^^ x[0] & x[3] & x[6] ^^ x[4] & x[6] ^^ x[2] & x[4] & x[6]
-        y[3] = x[0] ^^ x[1] ^^ x[0] & x[1] & x[2] ^^ x[0] & x[3] ^^ x[2] & x[4] ^^ x[1] & x[4] & x[5] ^^ x[2] & x[6] ^^ x[1] & x[3] & x[6] ^^ x[0] & x[4] & x[6] ^^ x[5] & x[6] ^^ 1
-        y[4] = x[2] & x[3] ^^ x[0] & x[4] ^^ x[1] & x[3] & x[4] ^^ x[5] ^^ x[2] & x[5] ^^ x[1] & x[2] & x[5] ^^ x[0] & x[3] & x[5] ^^ x[1] & x[6] ^^ x[1] & x[5] & x[6] ^^ x[4] & x[5] & x[6] ^^ 1
-        y[5] = x[0] ^^ x[1] ^^ x[2] ^^ x[0] & x[1] & x[2] ^^ x[0] & x[3] ^^ x[1] & x[2] & x[3] ^^ x[1] & x[4] ^^ x[0] & x[2] & x[4] ^^ x[0] & x[5] ^^ x[0] & x[1] & x[5] ^^ x[3] & x[5] ^^ x[0] & x[6] ^^ x[2] & x[5] & x[6]
-        y[6] = x[0] & x[1] ^^ x[3] ^^ x[0] & x[3] ^^ x[2] & x[3] & x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[5] ^^ x[1] & x[3] & x[5] ^^ x[1] & x[6] ^^ x[1] & x[2] & x[6] ^^ x[0] & x[3] & x[6] ^^ x[4] & x[6] ^^ x[2] & x[5] & x[6]
+        if is_constant(x):
+            y[0] = x[0] ^^ x[1] & x[3] ^^ x[0] & x[3] & x[4] ^^ x[1] & x[5] ^^ x[0] & x[2] & x[5] ^^ x[4] & x[5] ^^ x[0] & x[1] & x[6] ^^ x[2] & x[6] ^^ x[0] & x[5] & x[6] ^^ x[3] & x[5] & x[6] ^^ 1
+            y[1] = x[0] & x[2] ^^ x[0] & x[4] ^^ x[3] & x[4] ^^ x[1] & x[5] ^^ x[2] & x[4] & x[5] ^^ x[6] ^^ x[0] & x[6] ^^ x[3] & x[6] ^^ x[2] & x[3] & x[6] ^^ x[1] & x[4] & x[6] ^^ x[0] & x[5] & x[6] ^^ 1
+            y[2] = x[1] & x[2] ^^ x[0] & x[2] & x[3] ^^ x[4] ^^ x[1] & x[4] ^^ x[0] & x[1] & x[4] ^^ x[0] & x[5] ^^ x[0] & x[4] & x[5] ^^ x[3] & x[4] & x[5] ^^ x[1] & x[6] ^^ x[3] & x[6] ^^ x[0] & x[3] & x[6] ^^ x[4] & x[6] ^^ x[2] & x[4] & x[6]
+            y[3] = x[0] ^^ x[1] ^^ x[0] & x[1] & x[2] ^^ x[0] & x[3] ^^ x[2] & x[4] ^^ x[1] & x[4] & x[5] ^^ x[2] & x[6] ^^ x[1] & x[3] & x[6] ^^ x[0] & x[4] & x[6] ^^ x[5] & x[6] ^^ 1
+            y[4] = x[2] & x[3] ^^ x[0] & x[4] ^^ x[1] & x[3] & x[4] ^^ x[5] ^^ x[2] & x[5] ^^ x[1] & x[2] & x[5] ^^ x[0] & x[3] & x[5] ^^ x[1] & x[6] ^^ x[1] & x[5] & x[6] ^^ x[4] & x[5] & x[6] ^^ 1
+            y[5] = x[0] ^^ x[1] ^^ x[2] ^^ x[0] & x[1] & x[2] ^^ x[0] & x[3] ^^ x[1] & x[2] & x[3] ^^ x[1] & x[4] ^^ x[0] & x[2] & x[4] ^^ x[0] & x[5] ^^ x[0] & x[1] & x[5] ^^ x[3] & x[5] ^^ x[0] & x[6] ^^ x[2] & x[5] & x[6]
+            y[6] = x[0] & x[1] ^^ x[3] ^^ x[0] & x[3] ^^ x[2] & x[3] & x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[5] ^^ x[1] & x[3] & x[5] ^^ x[1] & x[6] ^^ x[1] & x[2] & x[6] ^^ x[0] & x[3] & x[6] ^^ x[4] & x[6] ^^ x[2] & x[5] & x[6]
+        else:
+            # Process variables over Boolean Polynomial Ring correctly.
+            y[0] = x[0] + x[1] * x[3] + x[0] * x[3] * x[4] + x[1] * x[5] + x[0] * x[2] * x[5] + x[4] * x[5] + x[0] * x[1] * x[6] + x[2] * x[6] + x[0] * x[5] * x[6] + x[3] * x[5] * x[6] + 1
+            y[1] = x[0] * x[2] + x[0] * x[4] + x[3] * x[4] + x[1] * x[5] + x[2] * x[4] * x[5] + x[6] + x[0] * x[6] + x[3] * x[6] + x[2] * x[3] * x[6] + x[1] * x[4] * x[6] + x[0] * x[5] * x[6] + 1
+            y[2] = x[1] * x[2] + x[0] * x[2] * x[3] + x[4] + x[1] * x[4] + x[0] * x[1] * x[4] + x[0] * x[5] + x[0] * x[4] * x[5] + x[3] * x[4] * x[5] + x[1] * x[6] + x[3] * x[6] + x[0] * x[3] * x[6] + x[4] * x[6] + x[2] * x[4] * x[6]
+            y[3] = x[0] + x[1] + x[0] * x[1] * x[2] + x[0] * x[3] + x[2] * x[4] + x[1] * x[4] * x[5] + x[2] * x[6] + x[1] * x[3] * x[6] + x[0] * x[4] * x[6] + x[5] * x[6] + 1
+            y[4] = x[2] * x[3] + x[0] * x[4] + x[1] * x[3] * x[4] + x[5] + x[2] * x[5] + x[1] * x[2] * x[5] + x[0] * x[3] * x[5] + x[1] * x[6] + x[1] * x[5] * x[6] + x[4] * x[5] * x[6] + 1
+            y[5] = x[0] + x[1] + x[2] + x[0] * x[1] * x[2] + x[0] * x[3] + x[1] * x[2] * x[3] + x[1] * x[4] + x[0] * x[2] * x[4] + x[0] * x[5] + x[0] * x[1] * x[5] + x[3] * x[5] + x[0] * x[6] + x[2] * x[5] * x[6]
+            y[6] = x[0] * x[1] + x[3] + x[0] * x[3] + x[2] * x[3] * x[4] + x[0] * x[5] + x[2] * x[5] + x[3] * x[5] + x[1] * x[3] * x[5] + x[1] * x[6] + x[1] * x[2] * x[6] + x[0] * x[3] * x[6] + x[4] * x[6] + x[2] * x[5] * x[6]
         return reverse(y)
 
     def s9(self, x):
         """Substitute with Misty S9 SBox. """
         x = reverse(x)
         y = [0] * len(x)
-        y[0] = x[0] & x[4] ^^ x[0] & x[5] ^^ x[1] & x[5] ^^ x[1] & x[6] ^^ x[2] & x[6] ^^ x[2] & x[7] ^^ x[3] & x[7] ^^ x[3] & x[8] ^^ x[4] & x[8] ^^ 1
-        y[1] = x[0] & x[2] ^^ x[3] ^^ x[1] & x[3] ^^ x[2] & x[3] ^^ x[3] & x[4] ^^ x[4] & x[5] ^^ x[0] & x[6] ^^ x[2] & x[6] ^^ x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[5] & x[8] ^^ 1
-        y[2] = x[0] & x[1] ^^ x[1] & x[3] ^^ x[4] ^^ x[0] & x[4] ^^ x[2] & x[4] ^^ x[3] & x[4] ^^ x[4] & x[5] ^^ x[0] & x[6] ^^ x[5] & x[6] ^^ x[1] & x[7] ^^ x[3] & x[7] ^^ x[8]
-        y[3] = x[0] ^^ x[1] & x[2] ^^ x[2] & x[4] ^^ x[5] ^^ x[1] & x[5] ^^ x[3] & x[5] ^^ x[4] & x[5] ^^ x[5] & x[6] ^^ x[1] & x[7] ^^ x[6] & x[7] ^^ x[2] & x[8] ^^ x[4] & x[8]
-        y[4] = x[1] ^^ x[0] & x[3] ^^ x[2] & x[3] ^^ x[0] & x[5] ^^ x[3] & x[5] ^^ x[6] ^^ x[2] & x[6] ^^ x[4] & x[6] ^^ x[5] & x[6] ^^ x[6] & x[7] ^^ x[2] & x[8] ^^ x[7] & x[8]
-        y[5] = x[2] ^^ x[0] & x[3] ^^ x[1] & x[4] ^^ x[3] & x[4] ^^ x[1] & x[6] ^^ x[4] & x[6] ^^ x[7] ^^ x[3] & x[7] ^^ x[5] & x[7] ^^ x[6] & x[7] ^^ x[0] & x[8] ^^ x[7] & x[8]
-        y[6] = x[0] & x[1] ^^ x[3] ^^ x[1] & x[4] ^^ x[2] & x[5] ^^ x[4] & x[5] ^^ x[2] & x[7] ^^ x[5] & x[7] ^^ x[8] ^^ x[0] & x[8] ^^ x[4] & x[8] ^^ x[6] & x[8] ^^ x[7] & x[8] ^^ 1
-        y[7] = x[1] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[2] & x[3] ^^ x[0] & x[4] ^^ x[5] ^^ x[1] & x[6] ^^ x[3] & x[6] ^^ x[0] & x[7] ^^ x[4] & x[7] ^^ x[6] & x[7] ^^ x[1] & x[8] ^^ 1
-        y[8] = x[0] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[6] ^^ x[5] & x[6] ^^ x[0] & x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[6] & x[8] ^^ 1
+        if is_constant(x):
+            y[0] = x[0] & x[4] ^^ x[0] & x[5] ^^ x[1] & x[5] ^^ x[1] & x[6] ^^ x[2] & x[6] ^^ x[2] & x[7] ^^ x[3] & x[7] ^^ x[3] & x[8] ^^ x[4] & x[8] ^^ 1
+            y[1] = x[0] & x[2] ^^ x[3] ^^ x[1] & x[3] ^^ x[2] & x[3] ^^ x[3] & x[4] ^^ x[4] & x[5] ^^ x[0] & x[6] ^^ x[2] & x[6] ^^ x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[5] & x[8] ^^ 1
+            y[2] = x[0] & x[1] ^^ x[1] & x[3] ^^ x[4] ^^ x[0] & x[4] ^^ x[2] & x[4] ^^ x[3] & x[4] ^^ x[4] & x[5] ^^ x[0] & x[6] ^^ x[5] & x[6] ^^ x[1] & x[7] ^^ x[3] & x[7] ^^ x[8]
+            y[3] = x[0] ^^ x[1] & x[2] ^^ x[2] & x[4] ^^ x[5] ^^ x[1] & x[5] ^^ x[3] & x[5] ^^ x[4] & x[5] ^^ x[5] & x[6] ^^ x[1] & x[7] ^^ x[6] & x[7] ^^ x[2] & x[8] ^^ x[4] & x[8]
+            y[4] = x[1] ^^ x[0] & x[3] ^^ x[2] & x[3] ^^ x[0] & x[5] ^^ x[3] & x[5] ^^ x[6] ^^ x[2] & x[6] ^^ x[4] & x[6] ^^ x[5] & x[6] ^^ x[6] & x[7] ^^ x[2] & x[8] ^^ x[7] & x[8]
+            y[5] = x[2] ^^ x[0] & x[3] ^^ x[1] & x[4] ^^ x[3] & x[4] ^^ x[1] & x[6] ^^ x[4] & x[6] ^^ x[7] ^^ x[3] & x[7] ^^ x[5] & x[7] ^^ x[6] & x[7] ^^ x[0] & x[8] ^^ x[7] & x[8]
+            y[6] = x[0] & x[1] ^^ x[3] ^^ x[1] & x[4] ^^ x[2] & x[5] ^^ x[4] & x[5] ^^ x[2] & x[7] ^^ x[5] & x[7] ^^ x[8] ^^ x[0] & x[8] ^^ x[4] & x[8] ^^ x[6] & x[8] ^^ x[7] & x[8] ^^ 1
+            y[7] = x[1] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[2] & x[3] ^^ x[0] & x[4] ^^ x[5] ^^ x[1] & x[6] ^^ x[3] & x[6] ^^ x[0] & x[7] ^^ x[4] & x[7] ^^ x[6] & x[7] ^^ x[1] & x[8] ^^ 1
+            y[8] = x[0] ^^ x[0] & x[1] ^^ x[1] & x[2] ^^ x[4] ^^ x[0] & x[5] ^^ x[2] & x[5] ^^ x[3] & x[6] ^^ x[5] & x[6] ^^ x[0] & x[7] ^^ x[0] & x[8] ^^ x[3] & x[8] ^^ x[6] & x[8] ^^ 1
+        else:
+            # Process variables over Boolean Polynomial Ring correctly.
+            y[0] = x[0] * x[4] + x[0] * x[5] + x[1] * x[5] + x[1] * x[6] + x[2] * x[6] + x[2] * x[7] + x[3] * x[7] + x[3] * x[8] + x[4] * x[8] + 1
+            y[1] = x[0] * x[2] + x[3] + x[1] * x[3] + x[2] * x[3] + x[3] * x[4] + x[4] * x[5] + x[0] * x[6] + x[2] * x[6] + x[7] + x[0] * x[8] + x[3] * x[8] + x[5] * x[8] + 1
+            y[2] = x[0] * x[1] + x[1] * x[3] + x[4] + x[0] * x[4] + x[2] * x[4] + x[3] * x[4] + x[4] * x[5] + x[0] * x[6] + x[5] * x[6] + x[1] * x[7] + x[3] * x[7] + x[8]
+            y[3] = x[0] + x[1] * x[2] + x[2] * x[4] + x[5] + x[1] * x[5] + x[3] * x[5] + x[4] * x[5] + x[5] * x[6] + x[1] * x[7] + x[6] * x[7] + x[2] * x[8] + x[4] * x[8]
+            y[4] = x[1] + x[0] * x[3] + x[2] * x[3] + x[0] * x[5] + x[3] * x[5] + x[6] + x[2] * x[6] + x[4] * x[6] + x[5] * x[6] + x[6] * x[7] + x[2] * x[8] + x[7] * x[8]
+            y[5] = x[2] + x[0] * x[3] + x[1] * x[4] + x[3] * x[4] + x[1] * x[6] + x[4] * x[6] + x[7] + x[3] * x[7] + x[5] * x[7] + x[6] * x[7] + x[0] * x[8] + x[7] * x[8]
+            y[6] = x[0] * x[1] + x[3] + x[1] * x[4] + x[2] * x[5] + x[4] * x[5] + x[2] * x[7] + x[5] * x[7] + x[8] + x[0] * x[8] + x[4] * x[8] + x[6] * x[8] + x[7] * x[8] + 1
+            y[7] = x[1] + x[0] * x[1] + x[1] * x[2] + x[2] * x[3] + x[0] * x[4] + x[5] + x[1] * x[6] + x[3] * x[6] + x[0] * x[7] + x[4] * x[7] + x[6] * x[7] + x[1] * x[8] + 1
+            y[8] = x[0] + x[0] * x[1] + x[1] * x[2] + x[4] + x[0] * x[5] + x[2] * x[5] + x[3] * x[6] + x[5] * x[6] + x[0] * x[7] + x[0] * x[8] + x[3] * x[8] + x[6] * x[8] + 1
         return reverse(y)
 
-    def fo(self, x, subkeys, i):
+    def fo(self, x, i):
+        """Misty FO function.
+
+        Second level nested Feistel network.
+
+        Args:
+            x: 32-bit input list.
+            i: number of rounds.
+
+        Returns:
+            Resulting bits list.
+        """
+
+
         left = x[0:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
 
-        ki1 = self.kindex(self.KEY_KI1, subkeys, i)
-        ki2 = self.kindex(self.KEY_KI2, subkeys, i)
-        ki3 = self.kindex(self.KEY_KI3, subkeys, i)
+        ki1 = self.kindex(self.KEY_KI1, i)
+        ki2 = self.kindex(self.KEY_KI2, i)
+        ki3 = self.kindex(self.KEY_KI3, i)
 
-        ko1 = self.kindex(self.KEY_KO1, subkeys, i)
-        ko2 = self.kindex(self.KEY_KO2, subkeys, i)
-        ko3 = self.kindex(self.KEY_KO3, subkeys, i)
-        ko4 = self.kindex(self.KEY_KO4, subkeys, i)
+        ko1 = self.kindex(self.KEY_KO1, i)
+        ko2 = self.kindex(self.KEY_KO2, i)
+        ko3 = self.kindex(self.KEY_KO3, i)
+        ko4 = self.kindex(self.KEY_KO4, i)
 
         left = vector_do(operator.__xor__, left, ko1)
         temp = self.fi(left, ki1)
@@ -270,36 +343,59 @@ class Misty(object):
 
         return right + left
 
-    def feistel_round(self, data, subkeys, i):
+    def feistel_round(self, data, i):
+        """Misty Feistel network single run.
+
+        It actually performs first 2 rounds (look for Misty specs).
+
+        Args:
+            data: 64-bit input list.
+            i: number of actual round (pay attention to indices according
+                to Misty specification). Rounds are in range 1 <= i <= n + 2,
+                where `n` is total number of rounds
+        Returns:
+            Resulting 64-bit list.
+
+        """
         left = data[0:self.halfblock_size]
         right = data[self.halfblock_size:]
 
         # FL1
-        left = self.fl(left, subkeys, i)
+        left = self.fl(left, i)
         # FL2
-        right = self.fl(right, subkeys, i + 1)
+        right = self.fl(right, i + 1)
 
         # FO1
-        temp = self.fo(left, subkeys, i)
+        temp = self.fo(left, i)
         right = vector_do(operator.__xor__, right, temp)
 
         # FO2
-        temp = self.fo(right, subkeys, i + 1)
+        temp = self.fo(right, i + 1)
         left = vector_do(operator.__xor__, temp, left)
 
         return left + right
 
     def encipher(self, data, key):
-        subkeys = self.key_schedule(key)
+        """Encipher plaintext with Misty cryptoalgorithm.
+
+        Args:
+            data: 64-bit input list (plaintext).
+            key: 128-bit input list (key).
+
+        Returns:
+            64-bit list (ciphertext).
+
+        """
+        self.key_schedule(key)
         for i in range(1, self.nrounds + 1, 2):
-            data = self.feistel_round(data, subkeys, i)
+            data = self.feistel_round(data, i)
 
         left = data[0:self.halfblock_size]
         right = data[self.halfblock_size:]
         # FL n+1
-        left = self.fl(left, subkeys, self.nrounds + 1)
+        left = self.fl(left, self.nrounds + 1)
         # FL n+2
-        right = self.fl(right, subkeys, self.nrounds + 2)
+        right = self.fl(right, self.nrounds + 2)
         return right + left
 
     def selftest(self):
@@ -357,7 +453,6 @@ class Misty(object):
 
         """
         var_names = self._varstrs(name, nbits, round)
-        self.gen_ring()
         return [self.ring(e) for e in var_names]
 
     def gen_round_var_names(self, round):
@@ -396,12 +491,13 @@ class Misty(object):
         self.ring = BooleanPolynomialRing(len(var_names), var_names, order='degrevlex')
 
 
-    def polynomials_fl(self, x, subkeys, i):
+    def polynomials_fl(self, x, i):
+        """Construct polynomials for Misty FL function."""
         left = x[:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
 
-        kl1 = self.kindex(self.KEY_KL1, subkeys, i)
-        kl2 = self.kindex(self.KEY_KL2, subkeys, i)
+        kl1 = self.kindex(self.KEY_KL1, i)
+        kl2 = self.kindex(self.KEY_KL2, i)
 
         polynomials = list()
 
@@ -411,18 +507,18 @@ class Misty(object):
         vars_xor = self._vars('FL_XOR', 16, i)
         vars_out = self._vars('FL', 32, i)
 
-        temp = vector_do(operator.__mul__, left, kl1)
-        polynomials.extend(vector_do(operator.__add__, temp, vars_kl1))
+        temp = vector_do(operator.__and__, left, kl1)
+        polynomials.extend(vector_do(operator.__xor__, temp, vars_kl1))
 
-        right = vector_do(operator.__add__, right, vars_kl1)
-        polynomials.extend(vector_do(operator.__add__, right, vars_xor))
+        right = vector_do(operator.__xor__, right, vars_kl1)
+        polynomials.extend(vector_do(operator.__xor__, right, vars_xor))
 
         # Replace `x or y` operation with equivalent `x * y ^ x + y`.
-        temp = map(lambda x, y: x * y + x + y, vars_xor, kl2)
-        polynomials.extend(vector_do(operator.__add__, temp, vars_kl2))
+        temp = vector_do(operator.__or__, vars_xor, kl2)
+        polynomials.extend(vector_do(operator.__xor__, temp, vars_kl2))
 
-        left = vector_do(operator.__add__, left, vars_kl2)
-        polynomials.extend(vector_do(operator.__add__, left, vars_out[:16]))
-        polynomials.extend(vector_do(operator.__add__, vars_xor, vars_out[16:]))
+        left = vector_do(operator.__xor__, left, vars_kl2)
+        polynomials.extend(vector_do(operator.__xor__, left, vars_out[:16]))
+        polynomials.extend(vector_do(operator.__xor__, vars_xor, vars_out[16:]))
 
         return flatten(polynomials)
