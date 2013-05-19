@@ -15,6 +15,7 @@ import operator
 
 from sage.rings.polynomial.multi_polynomial_sequence import PolynomialSequence
 
+
 def split(l, chunk_size):
     """Split flat list into nested lists of length `chunk_size`. If the
     `chunk_size` is not multiple of list length, the last sublist is added as
@@ -32,6 +33,7 @@ def split(l, chunk_size):
 
 
 def reverse(iterable):
+    """Return reversed iterable as list."""
     return list(reversed(iterable))
 
 
@@ -75,6 +77,11 @@ class Misty(object):
         return Integer(flatten(bytes), 2)
 
     def __init__(self):
+        """Create Misty cipher object.
+
+        It's a full scale cipher as well as its polynomial system generator.
+
+        """
         self.nrounds = 8
         self.block_size = 64
         self.halfblock_size = self.block_size // 2
@@ -173,6 +180,14 @@ class Misty(object):
         return d7 + d9
 
     def key_schedule(self, key):
+        """Generate subkeys according to Misty key schedule algorithm.
+
+        Args:
+            key: List of 128 bits.
+
+        Returns:
+            List of 8 subkeys (each containing list of 16 bits).
+        """
         key_chunks = split(key, 16)
         self.key = key_chunks
 
@@ -199,6 +214,7 @@ class Misty(object):
         return left + right
 
     def s7(self, x):
+        """Substitute with Misty S7 SBox. """
         x = reverse(x)
         y = [0] * len(x)
         y[0] = x[0] ^^ x[1] & x[3] ^^ x[0] & x[3] & x[4] ^^ x[1] & x[5] ^^ x[0] & x[2] & x[5] ^^ x[4] & x[5] ^^ x[0] & x[1] & x[6] ^^ x[2] & x[6] ^^ x[0] & x[5] & x[6] ^^ x[3] & x[5] & x[6] ^^ 1
@@ -211,6 +227,7 @@ class Misty(object):
         return reverse(y)
 
     def s9(self, x):
+        """Substitute with Misty S9 SBox. """
         x = reverse(x)
         y = [0] * len(x)
         y[0] = x[0] & x[4] ^^ x[0] & x[5] ^^ x[1] & x[5] ^^ x[1] & x[6] ^^ x[2] & x[6] ^^ x[2] & x[7] ^^ x[3] & x[7] ^^ x[3] & x[8] ^^ x[4] & x[8] ^^ 1
@@ -301,21 +318,30 @@ class Misty(object):
         """Prepare formatting string for variables notation.
 
         Args:
-            name: Variable identificator string (usually one letter for
-                simplicity).
+            name: Variable identificator string.
 
         Returns:
-            Variable identificator string appended with
-            format specificators that contains round number and block bit
-            number.
-            Format:
-            <round number>.<var id>.<bit number>
+            Variable identificator string appended with format specificators
+            that contains round number and block bit number.
+            Format: R<round number>_<var id>_<bit number>
 
         """
         l = str(len(str(self.block_size - 1)))
         return "R%s_" + name + "_%0" + l + "d"
 
     def _varstrs(self, name, nbits, round=''):
+        """Construct strings with variables names.
+
+        Args:
+            name: variable string identificator.
+            nbits: number of variables set of the same type.
+            round: number of round for which variables are defined. If not
+                specified, no round prefix is prepended to the string.
+
+        Returns:
+            List of strings with variables names.
+
+        """
         s = self._varformatstr(name)
         round = str(round)
         if not round:
@@ -325,12 +351,17 @@ class Misty(object):
         return [s % (round, i) for i in range(nbits)]
 
     def _vars(self, name, nbits, round=''):
+        """Construct variables in predefined Misty ring.
+
+        Refer to `_varstrs()` and `gen_ring()` for details.
+
+        """
         var_names = self._varstrs(name, nbits, round)
         self.gen_ring()
         return [self.ring(e) for e in var_names]
 
     def gen_round_var_names(self, round):
-        """Generate variables set for given round number."""
+        """Generate variables names set for given round number."""
         var_names = list()
         # FL
         var_names += self._varstrs('FL_KL1', 16, round)
@@ -340,6 +371,13 @@ class Misty(object):
         return var_names
 
     def gen_ring(self):
+        """Generate ring for Misty polynomial equations system.
+
+        Construct all variables needed for describing Misty cryptoalgorithm
+        with polynomial equations system and generate the corresponding
+        Boolean Polynomial Ring.
+
+        """
         var_names = list()
 
         # Input plaintext.
