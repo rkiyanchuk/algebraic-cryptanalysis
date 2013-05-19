@@ -284,6 +284,14 @@ class Misty(object):
         right = self.fl(right, subkeys, self.nrounds + 2)
         return right + left
 
+    def selftest(self):
+        """Check Misty test vectors compliance."""
+        c = self.encipher(self.get_bits(0x0123456789ABCDEF, 8),
+                          self.get_bits(0x00112233445566778899AABBCCDDEEFF, 16))
+        res = self.get_integer(c)
+        expected = 0x8b1da5f56ab3d07c
+        print res == expected
+
     def _varformatstr(self, name):
         """Prepare formatting string for variables notation.
 
