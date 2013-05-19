@@ -400,11 +400,14 @@ class Misty(object):
 
     def selftest(self):
         """Check Misty test vectors compliance."""
-        c = self.encipher(self.get_bits(0x0123456789ABCDEF, 8),
-                          self.get_bits(0x00112233445566778899AABBCCDDEEFF, 16))
-        res = self.get_integer(c)
+        plaintext = 0x0123456789ABCDEF
+        key = 0x00112233445566778899AABBCCDDEEFF
+        self.key_schedule(self.get_bits(key, 16))
+        c = self.encipher(self.get_bits(plaintext, 8),
+                          self.get_bits(key, 16))
+        result = self.get_integer(c)
         expected = 0x8b1da5f56ab3d07c
-        print res == expected
+        return result == expected
 
     ###########################################################################
     # POLYNOMIAL SYSTEM
