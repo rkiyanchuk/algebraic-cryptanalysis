@@ -52,7 +52,7 @@ def vector_do(operation, a, b):
     return map(lambda x, y: operation(x, y), a, b)
 
 
-class Misty:
+class Misty(object):
     """Misty cipher class.
 
     All method assume to take bit sequences as input. Use `get_bits` method to
