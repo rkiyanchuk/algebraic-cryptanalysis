@@ -13,6 +13,7 @@ __version__ = '0.9'
 
 import operator
 
+from sage.rings.polynomial.multi_polynomial_sequence import PolynomialSequence
 
 def split(l, chunk_size):
     """Split flat list into nested lists of length `chunk_size`. If the
@@ -292,6 +293,10 @@ class Misty(object):
         expected = 0x8b1da5f56ab3d07c
         print res == expected
 
+    ###########################################################################
+    # POLYNOMIAL SYSTEM
+    ###########################################################################
+
     def _varformatstr(self, name):
         """Prepare formatting string for variables notation.
 
@@ -300,41 +305,86 @@ class Misty(object):
                 simplicity).
 
         Returns:
-            String that contains the variable identificator appended with
-            format specificators to contains round number and block bit number.
-            For instance, if max(len(Nr), len(Bs)) = 3, then string
-            K03d%03d is returned.
+            Variable identificator string appended with
+            format specificators that contains round number and block bit
+            number.
+            Format:
+            <round number>.<var id>.<bit number>
 
         """
-        l = str(max([len(str(self.nrounds)), len(str(self.block_size - 1))]))
-        return name + "%0" + l + "d" + "%0" + l + "d"
+        l = str(len(str(self.block_size - 1)))
+        return "R%s_" + name + "_%0" + l + "d"
 
-    def _varstrs(self, name, round):
-        """Create a list of variables set for a fixed round.
-
-        Given a variable name, return list of all such variables in current
-        round for specific block size.
-
-        Args:
-            name: Variable identificator string (usually one letter for
-
-            round: Number of the enciphering round for correct variable
-                numbering.
-
-        Returns:
-            List of numbered variables.
-
-        """
+    def _varstrs(self, name, nbits, round=''):
         s = self._varformatstr(name)
-        if s.startswith(self.var_names['block']):
-            # X is a variable for plaintexts and ciphertexts, so it has the
-            # size of the cipher block.
-            return [s % (round, i) for i in range(self.block_size)]
-        else:
-            # Rest of the variables are used in Feistel Network and have half
-            # size of the cipher block.
-            return [s % (round, i) for i in range(self.halfblock_size)]
+        round = str(round)
+        if not round:
+            # Exclude round prefix.
+            s = s[s.find('_') + 1:]
+            return [s % (i) for i in range(nbits)]
+        return [s % (round, i) for i in range(nbits)]
 
-    def gen_vars(self, name, round_):
+    def _vars(self, name, nbits, round=''):
+        var_names = self._varstrs(name, nbits, round)
+        self.gen_ring()
+        return [self.ring(e) for e in var_names]
+
+    def gen_round_var_names(self, round):
         """Generate variables set for given round number."""
-        return [self.ring(e) for e in self._varstrs(name, round_)]
+        var_names = list()
+        # FL
+        var_names += self._varstrs('FL_KL1', 16, round)
+        var_names += self._varstrs('FL_KL2', 16, round)
+        var_names += self._varstrs('FL_XOR', 16, round)
+        var_names += self._varstrs('FL', 32, round)
+        return var_names
+
+    def gen_ring(self):
+        var_names = list()
+
+        # Input plaintext.
+        var_names += self._varstrs('IN', 64)
+        # Output ciphertext.
+        var_names += self._varstrs('OUT', 64)
+
+        # Key variables.
+        var_names += self._varstrs('K', 128)
+        # Subkey variables.
+        var_names += self._varstrs('KS', 128)
+
+        for i in range(1, self.nrounds + 1):
+            var_names += self.gen_round_var_names(i)
+
+        self.ring = BooleanPolynomialRing(len(var_names), var_names, order='degrevlex')
+
+
+    def polynomials_fl(self, x, subkeys, i):
+        left = x[:self.halfblock_size_fo]
+        right = x[self.halfblock_size_fo:]
+
+        kl1 = self.kindex(self.KEY_KL1, subkeys, i)
+        kl2 = self.kindex(self.KEY_KL2, subkeys, i)
+
+        polynomials = list()
+
+        ## Generate variables for given round
+        vars_kl1 = self._vars('FL_KL1', 16, i)
+        vars_kl2 = self._vars('FL_KL2', 16, i)
+        vars_xor = self._vars('FL_XOR', 16, i)
+        vars_out = self._vars('FL', 32, i)
+
+        temp = vector_do(operator.__mul__, left, kl1)
+        polynomials.extend(vector_do(operator.__add__, temp, vars_kl1))
+
+        right = vector_do(operator.__add__, right, vars_kl1)
+        polynomials.extend(vector_do(operator.__add__, right, vars_xor))
+
+        # Replace `x or y` operation with equivalent `x * y ^ x + y`.
+        temp = map(lambda x, y: x * y + x + y, vars_xor, kl2)
+        polynomials.extend(vector_do(operator.__add__, temp, vars_kl2))
+
+        left = vector_do(operator.__add__, left, vars_kl2)
+        polynomials.extend(vector_do(operator.__add__, left, vars_out[:16]))
+        polynomials.extend(vector_do(operator.__add__, vars_xor, vars_out[16:]))
+
+        return flatten(polynomials)
