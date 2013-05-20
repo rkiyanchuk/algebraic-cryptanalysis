@@ -479,6 +479,12 @@ class Misty(object):
             var_names += self._varstrs('FI' + str(i) + '_S7', 7, round)
             var_names += self._varstrs('FI' + str(i) + '_SS9', 9, round)
             var_names += self._varstrs('FI' + str(i) + '_KI2', 16, round)
+        # FO
+        var_names += self._varstrs('FO', 32, round)
+        var_names += self._varstrs('FO_KO1', 16, round)
+        var_names += self._varstrs('FO_KO2', 16, round)
+        var_names += self._varstrs('FO_KO3', 16, round)
+
 
         return var_names
 
@@ -582,3 +588,48 @@ class Misty(object):
         polynomials.extend(vector_do(operator.__xor__, vars_fi[7:16], d9))
         return polynomials
 
+    def polynomials_fo(self, x, i):
+        """Construct polynomials for Misty FI function."""
+
+        left = x[0:self.halfblock_size_fo]
+        right = x[self.halfblock_size_fo:]
+
+        ki1 = self.kindex(self.KEY_KI1, i)
+        ki2 = self.kindex(self.KEY_KI2, i)
+        ki3 = self.kindex(self.KEY_KI3, i)
+
+        ko1 = self.kindex(self.KEY_KO1, i)
+        ko2 = self.kindex(self.KEY_KO2, i)
+        ko3 = self.kindex(self.KEY_KO3, i)
+        ko4 = self.kindex(self.KEY_KO4, i)
+
+        vars_fo = self._vars('FO', 32, i)
+        vars_ko1 = self._vars('FO_KO1', 16, i)
+        vars_ko2 = self._vars('FO_KO2', 16, i)
+        vars_ko3 = self._vars('FO_KO3', 16, i)
+        vars_fi1 = self._vars('FI1', 16, i)
+        vars_fi2 = self._vars('FI2', 16, i)
+        vars_fi3 = self._vars('FI3', 16, i)
+
+        polynomials = list()
+
+        left = vector_do(operator.__xor__, left, ko1)
+        polynomials.extend(vector_do(operator.__xor__, left, vars_ko1))
+        polynomials.extend(self.polynomials_fi(vars_ko1, ki1, 1, i))  # FI1 variables introduced.
+        left = vector_do(operator.__xor__, vars_fi1, right)
+
+        right = vector_do(operator.__xor__, right, ko2)
+        polynomials.extend(vector_do(operator.__xor__, right, vars_ko2))
+        polynomials.extend(self.polynomials_fi(vars_ko2, ki2, 2, i))  # FI2 variables introduced.
+        right = vector_do(operator.__xor__, vars_fi2, left)
+
+        left = vector_do(operator.__xor__, left, ko3)
+        polynomials.extend(vector_do(operator.__xor__, left, vars_ko3))
+        polynomials.extend(self.polynomials_fi(vars_ko3, ki3, 3, i))  # FI3 variables introduced.
+        left = vector_do(operator.__xor__, vars_fi3, right)
+
+        right = vector_do(operator.__xor__, right, ko4)
+        polynomials.extend(vector_do(operator.__xor__, right, vars_fo[0:16]))
+        polynomials.extend(vector_do(operator.__xor__, left, vars_fo[16:32]))
+
+        return polynomials

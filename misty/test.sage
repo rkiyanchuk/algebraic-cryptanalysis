@@ -125,5 +125,29 @@ def test_fi():
     expected = m.fi(plain, subkey)
     return values == expected
 
+
+def test_fo():
+    m = Misty()
+
+    plain = m._vars('IN', 32)
+    m.subkeys = split(m._vars('KS', 128), 16)
+    m.key = split(m._vars('K', 128), 16)
+
+    polynomials = m.polynomials_fo(plain, 1)
+    F = PolynomialSequence(polynomials)
+    F = inject(F, m._vars('IN', 32), [1]*32)
+    F = inject(F, m._vars('K', 128), [1]*128)
+    F = inject(F, m._vars('KS', 128), [1]*128)
+    result = sat_solve(F)
+    values = get_vars(result[0], m._vars('FO', 32, 1))
+
+    plain = [1] * 32
+    m.subkeys = [[1]*16] * 8
+    m.key = [[1]*16] * 8
+
+    expected = m.fo(plain, 1)
+    return values == expected
+
 print 'Test FL...', test_fl()
 print 'Test FI...', test_fi()
+print 'Test FO...', test_fo()
