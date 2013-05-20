@@ -510,6 +510,11 @@ class Misty(object):
 
         for i in range(1, self.nrounds + 1):
             var_names += self.gen_round_var_names(i)
+        for i in range(1, self.nrounds + 1):
+            if i % 2 == 1:
+                var_names += self._varstrs('FX', 32, i)
+            else:
+                var_names += self._varstrs('F', 64, i)
 
         self.ring = BooleanPolynomialRing(len(var_names), var_names, order='degrevlex')
 
@@ -631,5 +636,33 @@ class Misty(object):
         right = vector_do(operator.__xor__, right, ko4)
         polynomials.extend(vector_do(operator.__xor__, right, vars_fo[0:16]))
         polynomials.extend(vector_do(operator.__xor__, left, vars_fo[16:32]))
+
+        return polynomials
+
+    def polynomials_round(self, data, i):
+        """Construct polynomials for Misty Feistel single run."""
+        left = data[0:self.halfblock_size]
+        right = data[self.halfblock_size:]
+
+        vars_fl1 = self._vars('FL', 32, i)
+        vars_fl2 = self._vars('FL', 32, i + 1)
+        vars_fo1 = self._vars('FO', 32, i)
+        vars_fo2 = self._vars('FO', 32, i + 1)
+        vars_fx = self._vars('FX', 32, i)
+        vars_f = self._vars('F', 64, i + 1)
+
+        polynomials = list()
+
+        polynomials.extend(self.polynomials_fl(left, i))  # FL1 fariables introduced.
+        polynomials.extend(self.polynomials_fl(right, i + 1))  # FL2 fariables introduced.
+
+        polynomials.extend(self.polynomials_fo(vars_fl1, i))  # FO1 variables introduced.
+        right = vector_do(operator.__xor__, vars_fo1, vars_fl2)
+        polynomials.extend(vector_do(operator.__xor__, right, vars_fx))
+
+        polynomials.extend(self.polynomials_fo(vars_fx, i + 1))  # FO2 variables introduced.
+        left = vector_do(operator.__xor__, vars_fo2, vars_fl1)
+        polynomials.extend(vector_do(operator.__xor__, left, vars_f[0:32]))
+        polynomials.extend(vector_do(operator.__xor__, vars_fx, vars_f[32:64]))
 
         return polynomials

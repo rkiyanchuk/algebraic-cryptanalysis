@@ -148,6 +148,29 @@ def test_fo():
     expected = m.fo(plain, 1)
     return values == expected
 
-print 'Test FL...', test_fl()
-print 'Test FI...', test_fi()
-print 'Test FO...', test_fo()
+def test_round():
+    m = Misty()
+
+    plain = m._vars('IN', 64)
+    m.subkeys = split(m._vars('KS', 128), 16)
+    m.key = split(m._vars('K', 128), 16)
+
+    polynomials = m.polynomials_round(plain, 1)
+    F = PolynomialSequence(polynomials)
+    F = inject(F, m._vars('IN', 64), [1]*64)
+    F = inject(F, m._vars('K', 128), [1]*128)
+    F = inject(F, m._vars('KS', 128), [1]*128)
+    result = sat_solve(F)
+    values = get_vars(result[0], m._vars('F', 64, 2))
+
+    plain = [1] * 64
+    m.subkeys = [[1]*16] * 8
+    m.key = [[1]*16] * 8
+
+    expected = m.feistel_round(plain, 1)
+    return values == expected
+
+print 'Test equations FL...', test_fl()
+print 'Test equations FI...', test_fi()
+print 'Test equations FO...', test_fo()
+print 'Test equations round...', test_round()
