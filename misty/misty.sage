@@ -105,7 +105,7 @@ class Misty(object):
         It's a full scale cipher as well as its polynomial system generator.
 
         """
-        self.nrounds = 8
+        self.nrounds = 4
         self.block_size = 64
         self.halfblock_size = self.block_size // 2
         self.halfblock_size_fo = self.halfblock_size // 2
@@ -264,9 +264,10 @@ class Misty(object):
             y[2] = x[4] &  x[3] ^^ x[6] &  x[2] ^^ x[5] &  x[3] &  x[2] ^^ x[1] ^^ x[4] &  x[1] ^^ x[5] &  x[4] &  x[1] ^^ x[6] &  x[3] &  x[1] ^^ x[5] &  x[0] ^^ x[5] &  x[1] &  x[0] ^^ x[2] &  x[1] &  x[0] ^^ 1
             y[1] = x[6] ^^ x[5] ^^ x[4] ^^ x[6] &  x[5] &  x[4] ^^ x[6] &  x[3] ^^ x[5] &  x[4] &  x[3] ^^ x[5] &  x[2] ^^ x[6] &  x[4] &  x[2] ^^ x[6] &  x[1] ^^ x[6] &  x[5] &  x[1] ^^ x[3] &  x[1] ^^ x[6] &  x[0] ^^ x[4] &  x[1] &  x[0]
             y[0] = x[6] &  x[5] ^^ x[3] ^^ x[6] &  x[3] ^^ x[4] &  x[3] &  x[2] ^^ x[6] &  x[1] ^^ x[4] &  x[1] ^^ x[3] &  x[1] ^^ x[5] &  x[3] &  x[1] ^^ x[5] &  x[0] ^^ x[5] &  x[4] &  x[0] ^^ x[6] &  x[3] &  x[0] ^^ x[2] &  x[0] ^^ x[4] &  x[1] &  x[0]
+            return y
         else:
             # Process variables over Boolean Polynomial Ring correctly.
-            return [
+            pols = [
             r[6] + x[6] + x[5] * x[3] + x[6] * x[3] * x[2] + x[5] * x[1] + x[6] * x[4] * x[1] + x[2] * x[1] + x[6] * x[5] * x[0] + x[4] * x[0] + x[6] * x[1] * x[0] + x[3] * x[1] * x[0] + 1,
             r[5] + x[6] * x[4] + x[6] * x[2] + x[3] * x[2] + x[5] * x[1] + x[4] * x[2] * x[1] + x[0] + x[6] * x[0] + x[3] * x[0] + x[4] * x[3] * x[0] + x[5] * x[2] * x[0] + x[6] * x[1] * x[0] + 1,
             r[4] + x[5] * x[4] + x[6] * x[4] * x[3] + x[2] + x[5] * x[2] + x[6] * x[5] * x[2] + x[6] * x[1] + x[6] * x[2] * x[1] + x[3] * x[2] * x[1] + x[5] * x[0] + x[3] * x[0] + x[6] * x[3] * x[0] + x[2] * x[0] + x[4] * x[2] * x[0],
@@ -275,7 +276,8 @@ class Misty(object):
             r[1] + x[6] + x[5] + x[4] + x[6] * x[5] * x[4] + x[6] * x[3] + x[5] * x[4] * x[3] + x[5] * x[2] + x[6] * x[4] * x[2] + x[6] * x[1] + x[6] * x[5] * x[1] + x[3] * x[1] + x[6] * x[0] + x[4] * x[1] * x[0],
             r[0] + x[6] * x[5] + x[3] + x[6] * x[3] + x[4] * x[3] * x[2] + x[6] * x[1] + x[4] * x[1] + x[3] * x[1] + x[5] * x[3] * x[1] + x[5] * x[0] + x[5] * x[4] * x[0] + x[6] * x[3] * x[0] + x[2] * x[0] + x[4] * x[1] * x[0]
             ]
-        return y
+            return PolynomialSequence(pols).groebner_basis()
+
 
     def s9(self, x, r=None):
         """Substitute with Misty S9 SBox. """
@@ -293,7 +295,7 @@ class Misty(object):
             return y
         else:
             # Process variables over Boolean Polynomial Ring correctly.
-            return [
+            pols = [
             r[8] + x[8] * x[4] + x[8] * x[3] + x[7] * x[3] + x[7] * x[2] + x[6] * x[2] + x[6] * x[1] + x[5] * x[1] + x[5] * x[0] + x[4] * x[0] + 1,
             r[7] + x[8] * x[6] + x[5] + x[7] * x[5] + x[6] * x[5] + x[5] * x[4] + x[4] * x[3] + x[8] * x[2] + x[6] * x[2] + x[1] + x[8] * x[0] + x[5] * x[0] + x[3] * x[0] + 1,
             r[6] + x[8] * x[7] + x[7] * x[5] + x[4] + x[8] * x[4] + x[6] * x[4] + x[5] * x[4] + x[4] * x[3] + x[8] * x[2] + x[3] * x[2] + x[7] * x[1] + x[5] * x[1] + x[0],
@@ -304,6 +306,7 @@ class Misty(object):
             r[1] + x[7] + x[8] * x[7] + x[7] * x[6] + x[6] * x[5] + x[8] * x[4] + x[3] + x[7] * x[2] + x[5] * x[2] + x[8] * x[1] + x[4] * x[1] + x[2] * x[1] + x[7] * x[0] + 1,
             r[0] + x[8] + x[8] * x[7] + x[7] * x[6] + x[4] + x[8] * x[3] + x[6] * x[3] + x[5] * x[2] + x[3] * x[2] + x[8] * x[1] + x[8] * x[0] + x[5] * x[0] + x[2] * x[0] + 1
             ]
+            return PolynomialSequence(pols).groebner_basis()
 
     def fo(self, x, i):
         """Misty FO function.
@@ -596,7 +599,7 @@ class Misty(object):
 
         polynomials.extend(vector_do(operator.__xor__, vars_fi[0:7], d7))
         polynomials.extend(vector_do(operator.__xor__, vars_fi[7:16], d9))
-        return polynomials
+        return PolynomialSequence(polynomials)
 
     def polynomials_fo(self, x, i):
         """Construct polynomials for Misty FI function."""
@@ -642,7 +645,7 @@ class Misty(object):
         polynomials.extend(vector_do(operator.__xor__, right, vars_fo[0:16]))
         polynomials.extend(vector_do(operator.__xor__, left, vars_fo[16:32]))
 
-        return polynomials
+        return PolynomialSequence(polynomials)
 
     def polynomials_round(self, data, i):
         """Construct polynomials for Misty Feistel single run."""
@@ -670,7 +673,7 @@ class Misty(object):
         polynomials.extend(vector_do(operator.__xor__, left, vars_f[0:32]))
         polynomials.extend(vector_do(operator.__xor__, vars_fx, vars_f[32:64]))
 
-        return polynomials
+        return PolynomialSequence(polynomials)
 
     def polynomial_system(self):
         """Construct polynomials system for Misty cipher."""
@@ -698,4 +701,4 @@ class Misty(object):
         polynomials.extend(self.polynomials_fl(right,  self.nrounds + 2))
         polynomials.extend(vector_do(operator.__xor__, vars_fl1, vars_out[32:64]))
         polynomials.extend(vector_do(operator.__xor__, vars_fl2, vars_out[0:32]))
-        return polynomials
+        return PolynomialSequence(polynomials)
