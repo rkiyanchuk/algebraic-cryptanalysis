@@ -223,8 +223,7 @@ class Misty(object):
                 subkeys.append(self.fi(key_chunks[k], key_chunks[k + 1]))
             else:
                 subkeys.append(self.fi(key_chunks[k], key_chunks[0]))
-        if self.subkeys is None:
-            self.subkeys = subkeys
+        self.subkeys = subkeys
         return subkeys
 
     def fl(self, x, i):
@@ -391,7 +390,6 @@ class Misty(object):
             64-bit list (ciphertext).
 
         """
-        self.key_schedule(key)
         for i in range(1, self.nrounds + 1, 2):
             data = self.feistel_round(data, i)
 
@@ -515,12 +513,19 @@ class Misty(object):
                 var_names += self._varstrs('FX', 32, i)
             else:
                 var_names += self._varstrs('F', 64, i)
+        for i in range(self.nrounds + 1, self.nrounds + 3):
+            # FL
+            var_names += self._varstrs('FL_KL1', 16, i)
+            var_names += self._varstrs('FL_KL2', 16, i)
+            var_names += self._varstrs('FL_XOR', 16, i)
+            var_names += self._varstrs('FL', 32, i)
 
         self.ring = BooleanPolynomialRing(len(var_names), var_names, order='degrevlex')
 
 
     def polynomials_fl(self, x, i):
         """Construct polynomials for Misty FL function."""
+
         left = x[:self.halfblock_size_fo]
         right = x[self.halfblock_size_fo:]
 
@@ -546,8 +551,8 @@ class Misty(object):
         polynomials.extend(vector_do(operator.__xor__, temp, vars_kl2))
 
         left = vector_do(operator.__xor__, left, vars_kl2)
-        polynomials.extend(vector_do(operator.__xor__, left, vars_out[:16]))
-        polynomials.extend(vector_do(operator.__xor__, vars_xor, vars_out[16:]))
+        polynomials.extend(vector_do(operator.__xor__, left, vars_out[0:16]))
+        polynomials.extend(vector_do(operator.__xor__, vars_xor, vars_out[16:32]))
 
         return flatten(polynomials)
 
@@ -665,4 +670,32 @@ class Misty(object):
         polynomials.extend(vector_do(operator.__xor__, left, vars_f[0:32]))
         polynomials.extend(vector_do(operator.__xor__, vars_fx, vars_f[32:64]))
 
+        return polynomials
+
+    def polynomial_system(self):
+        """Construct polynomials system for Misty cipher."""
+
+        plain = self._vars('IN', 64)
+        self.key = split(self._vars('K', 128), 16)
+        self.subkeys = split(self._vars('KS', 128), 16)
+
+        polynomials = list()
+
+        polynomials.extend(self.polynomials_round(plain, 1))  # R2_F variables introduced.
+        for i in range(3, self.nrounds + 1, 2):
+            vars_f_prev = self._vars('F', 64, i - 1)
+            polynomials.extend(self.polynomials_round(vars_f_prev, i))
+
+        vars_f = self._vars('F', 64, self.nrounds)
+        vars_fl1 = self._vars('FL', 32, self.nrounds + 1)
+        vars_fl2 = self._vars('FL', 32, self.nrounds + 2)
+        vars_out = self._vars('OUT', 64)
+
+        left = vars_f[0:self.halfblock_size]
+        right = vars_f[self.halfblock_size:]
+
+        polynomials.extend(self.polynomials_fl(left,  self.nrounds + 1))
+        polynomials.extend(self.polynomials_fl(right,  self.nrounds + 2))
+        polynomials.extend(vector_do(operator.__xor__, vars_fl1, vars_out[32:64]))
+        polynomials.extend(vector_do(operator.__xor__, vars_fl2, vars_out[0:32]))
         return polynomials

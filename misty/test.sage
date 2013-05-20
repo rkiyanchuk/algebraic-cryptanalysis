@@ -148,6 +148,7 @@ def test_fo():
     expected = m.fo(plain, 1)
     return values == expected
 
+
 def test_round():
     m = Misty()
 
@@ -170,7 +171,28 @@ def test_round():
     expected = m.feistel_round(plain, 1)
     return values == expected
 
+
+def test_polynomial_system():
+    m = Misty()
+
+    plaintext = 0x0123456789ABCDEF
+    key = 0x00112233445566778899AABBCCDDEEFF
+    subkey = 0xCF518E7F5E29673ACDBC07D6BF355E11
+
+    polynomials = m.polynomial_system()
+    F = PolynomialSequence(polynomials)
+    F = inject(F, m._vars('IN', 64), m.get_bits(plaintext, 8))
+    F = inject(F, m._vars('K', 128), m.get_bits(key, 16))
+    F = inject(F, m._vars('KS', 128), m.get_bits(subkey, 16))
+    result = sat_solve(F)
+    values = get_vars(result[0], m._vars('OUT', 64))
+
+    m.key_schedule(m.get_bits(key, 16))
+    expected = m.encipher(m.get_bits(plaintext, 8), m.get_bits(key, 16))
+    return values == expected
+
 print 'Test equations FL...', test_fl()
 print 'Test equations FI...', test_fi()
 print 'Test equations FO...', test_fo()
 print 'Test equations round...', test_round()
+print 'Test equations Misty...', test_polynomial_system()
