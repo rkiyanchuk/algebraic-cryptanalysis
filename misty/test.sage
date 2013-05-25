@@ -196,9 +196,8 @@ def test_round():
     expected = m.feistel_round(plain, 1)
     return values == expected
 
-
 def test_polynomial_system():
-    m = Misty(8, 'a')
+    m = Misty(8)
 
     plaintext = 0x0123456789ABCDEF
     key = 0x00112233445566778899AABBCCDDEEFF
@@ -214,6 +213,22 @@ def test_polynomial_system():
 
     m.key_schedule(m.get_bits(key, 16))
     expected = m.encipher(m.get_bits(plaintext, 8), m.get_bits(key, 16))
+    return values == expected
+
+
+def test_key_schedule():
+    m = Misty(8, 'a', equations_key_schedule=True)
+
+    key = 0x00112233445566778899AABBCCDDEEFF
+    expected = m.get_bits(0xCF518E7F5E29673ACDBC07D6BF355E11, 16)
+
+    polynomials = m.polynomials_key_schedule()
+    F = PolynomialSequence(polynomials)
+    F = inject_vars(F, m.vars('K', 128), m.get_bits(key, 16))
+    result = sat_solve(F)
+    values = get_vars(result[0], m.vars('KS', 128))
+
+    #subkeys = flatten(m.key_schedule(m.get_bits(key, 16)))
     return values == expected
 
 

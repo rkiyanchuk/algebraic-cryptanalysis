@@ -111,7 +111,7 @@ class Misty(object):
         bytes = [reverse(b) for b in bytes]
         return Integer(flatten(bytes), 2)
 
-    def __init__(self, nrounds, prefix=''):
+    def __init__(self, nrounds, prefix='', equations_key_schedule=True):
         """Create Misty cipher object.
 
         It's a full scale cipher as well as its polynomial system generator.
@@ -124,6 +124,7 @@ class Misty(object):
         """
         self.nrounds = nrounds
         self.prefix = prefix
+        self.equations_key_schedule = equations_key_schedule
         self.block_size = 64
         self.halfblock_size = self.block_size // 2
         self.halfblock_size_fo = self.halfblock_size // 2
@@ -268,7 +269,7 @@ class Misty(object):
         left = vector_do(operator.__xor__, left, temp)
         return left + right
 
-    @groebner_basis
+#    @groebner_basis
     def s7(self, x, r=None):
         """Substitute with Misty S7 SBox.
 
@@ -298,7 +299,7 @@ class Misty(object):
             return polynomials
 
 
-    @groebner_basis
+#    @groebner_basis
     def s9(self, x, r=None):
         """Substitute with Misty S9 SBox. """
         y = [0] * len(x)
@@ -454,7 +455,7 @@ class Misty(object):
         l = str(len(str(self.block_size - 1)))
         return "R%s_" + name + "_%0" + l + "d"
 
-    def _varstrs(self, name, nbits, round=''):
+    def _varstrs(self, name, nbits, round='', start_from=0):
         """Construct strings with variables names.
 
         Args:
@@ -472,21 +473,21 @@ class Misty(object):
         if not round:
             # Exclude round prefix.
             s = s[s.find('_') + 1:]
-            var_names = [s % (i) for i in range(nbits)]
+            var_names = [s % (i) for i in range(start_from, start_from + nbits)]
         else:
-            var_names = [s % (round, i) for i in range(nbits)]
+            var_names = [s % (round, i) for i in range(start_from, start_from + nbits)]
         if not name == 'K' and not name == 'KS':
             # Include polynomial system prefix.
             var_names = [self.prefix + var for var in var_names]
         return var_names
 
-    def vars(self, name, nbits, round=''):
+    def vars(self, name, nbits, round='', start_from=0):
         """Construct variables in predefined Misty ring.
 
         Refer to `_varstrs()` and `gen_ring()` for details.
 
         """
-        var_names = self._varstrs(name, nbits, round)
+        var_names = self._varstrs(name, nbits, round=round, start_from=start_from)
         return [self.ring(e) for e in var_names]
 
     def gen_round_var_names(self, round):
@@ -533,6 +534,14 @@ class Misty(object):
         var_names += self._varstrs('K', 128)
         # Subkey variables.
         var_names += self._varstrs('KS', 128)
+
+        if self.equations_key_schedule == True:
+            for i in range(8):
+                var_names += self._varstrs('FIKS' + str(i), 16)
+                var_names += self._varstrs('FIKS' + str(i) + '_S9', 9)
+                var_names += self._varstrs('FIKS' + str(i) + '_S7', 7)
+                var_names += self._varstrs('FIKS' + str(i) + '_SS9', 9)
+                var_names += self._varstrs('FIKS' + str(i) + '_KI2', 16)
 
         for i in range(1, self.nrounds + 1):
             var_names += self.gen_round_var_names(i)
@@ -584,7 +593,7 @@ class Misty(object):
 
         return flatten(polynomials)
 
-    def polynomials_fi(self, x, subkey_ki, subround, r):
+    def polynomials_fi(self, x, subkey_ki, subround, r=''):
         """Construct polynomials for Misty FI function.
 
         Args:
@@ -600,11 +609,17 @@ class Misty(object):
         d9 = x[0:self.fi_left_size]
         d7 = x[self.fi_left_size:]
 
-        vars_fi = self.vars('FI' + str(subround), 16, r)
-        vars_s9 = self.vars('FI' + str(subround) + '_S9', 9, r)
-        vars_s7 = self.vars('FI' + str(subround) + '_S7', 7, r)
-        vars_ss9 = self.vars('FI' + str(subround) + '_SS9', 9, r)
-        vars_ki2 = self.vars('FI' + str(subround) + '_KI2', 9, r)
+        subround = str(subround)
+
+        if subround in ['1', '2', '3']:
+            vars_fi = self.vars('FI' + subround, 16, r)
+        else:
+            vars_fi = self.vars('KS', 16, start_from=int(subround[2]) * 16)
+
+        vars_s9 = self.vars('FI' + subround + '_S9', 9, r)
+        vars_s7 = self.vars('FI' + subround + '_S7', 7, r)
+        vars_ss9 = self.vars('FI' + subround + '_SS9', 9, r)
+        vars_ki2 = self.vars('FI' + subround + '_KI2', 9, r)
 
         polynomials = list()
         pad = [self.ring(0)] * 2
@@ -700,14 +715,30 @@ class Misty(object):
 
         return polynomials
 
-    def polynomial_system(self):
-        """Construct polynomials system for Misty cipher."""
-
-        plain = self.vars('IN', 64)
+    def polynomials_key_schedule(self):
+        """Construct polynomials for Misty key scheduling."""
         self.key = split(self.vars('K', 128), 16)
-        self.subkeys = split(self.vars('KS', 128), 16)
 
         polynomials = list()
+        for k in range(len(self.key)):
+            subround = 'KS' + str(k)
+            if k < 7:
+                polynomials.extend(self.polynomials_fi(self.key[k], self.key[k + 1], subround))
+            else:
+                polynomials.extend(self.polynomials_fi(self.key[k], self.key[0], subround))
+        self.subkeys = split(self.vars('KS', 128), 16)
+        return polynomials
+
+    def polynomial_system(self):
+        """Construct polynomials system for Misty cipher."""
+        polynomials = list()
+
+        plain = self.vars('IN', 64)
+        if self.equations_key_schedule is True:
+            polynomials.extend(self.polynomials_key_schedule())
+        else:
+            self.key = split(self.vars('K', 128), 16)
+            self.subkeys = split(self.vars('KS', 128), 16)
 
         polynomials.extend(self.polynomials_round(plain, 1))  # R2_F variables introduced.
         for i in range(3, self.nrounds + 1, 2):
