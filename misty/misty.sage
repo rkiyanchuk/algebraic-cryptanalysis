@@ -75,9 +75,11 @@ def vector_do(operation, a, b):
 
 
 def is_constant(vals):
+    """Check of all elements in list are contants, not variables."""
     return all([isinstance(i, Integer) for i in vals])
 
 def groebner_basis(func):
+    """Decorator for Groebner basis reduce of polynomial system."""
     def wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
         if not is_constant(result):
