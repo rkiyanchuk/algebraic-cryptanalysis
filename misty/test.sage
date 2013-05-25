@@ -71,9 +71,11 @@ def inject_vars(F, vars, values):
 
 def get_vars(solution, vars):
     """Obtain variable values from solution dict. """
+    var_names = map(str, vars)
+    solution = dict(zip(map(str, solution.keys()), solution.values()))
     values = list()
-    for i in vars:
-        values.append(solution[i])
+    for i in var_names:
+        values.append(solution.get(i))
     return values
 
 
