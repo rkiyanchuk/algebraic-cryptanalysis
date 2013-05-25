@@ -63,7 +63,7 @@ s9 = [
 ]
 
 
-def inject(F, vars, values):
+def inject_vars(F, vars, values):
     """Inject vars values into polynomial system. """
     sub_values = dict(zip(vars, values))
     return F.subs(sub_values)
@@ -103,24 +103,24 @@ def join_systems(mqsystems):
 
 
 load('misty.sage')
-m = Misty()
+m = Misty(8)
 print 'Test Misty...', m.selftest()
 
 
 def test_fl():
-    m = Misty()
+    m = Misty(8)
 
-    plain = m._vars('IN', 32)
-    m.subkeys = split(m._vars('KS', 128), 16)
-    m.key = split(m._vars('K', 128), 16)
+    plain = m.vars('IN', 32)
+    m.subkeys = split(m.vars('KS', 128), 16)
+    m.key = split(m.vars('K', 128), 16)
 
     polynomials = m.polynomials_fl(plain, 1)
     F = PolynomialSequence(polynomials)
-    F = inject(F, m._vars('IN', 32), [1]*32)
-    F = inject(F, m._vars('K', 128), [1]*128)
-    F = inject(F, m._vars('KS', 128), [1]*128)
+    F = inject_vars(F, m.vars('IN', 32), [1]*32)
+    F = inject_vars(F, m.vars('K', 128), [1]*128)
+    F = inject_vars(F, m.vars('KS', 128), [1]*128)
     result = sat_solve(F)
-    values = get_vars(result[0], m._vars('FL', 32, 1))
+    values = get_vars(result[0], m.vars('FL', 32, 1))
 
     plain = [1] * 32
     m.subkeys = [[1]*16] * 8
@@ -131,18 +131,18 @@ def test_fl():
 
 
 def test_fi():
-    m = Misty()
+    m = Misty(8)
 
-    plain = m._vars('IN', 16)
-    subkey = m._vars('K', 16)
+    plain = m.vars('IN', 16)
+    subkey = m.vars('K', 16)
 
     polynomials = m.polynomials_fi(plain, subkey, 1, 1)
     F = PolynomialSequence(polynomials)
-    F = inject(F, m._vars('IN', 16), [1]*16)
-    F = inject(F, m._vars('K', 16), [1]*16)
+    F = inject_vars(F, m.vars('IN', 16), [1]*16)
+    F = inject_vars(F, m.vars('K', 16), [1]*16)
     result = sat_solve(F)
 
-    values = get_vars(result[0], m._vars('FI1', 16, 1))
+    values = get_vars(result[0], m.vars('FI1', 16, 1))
 
     plain = [1]*16
     subkey = [1]*16
@@ -152,19 +152,19 @@ def test_fi():
 
 
 def test_fo():
-    m = Misty()
+    m = Misty(8)
 
-    plain = m._vars('IN', 32)
-    m.subkeys = split(m._vars('KS', 128), 16)
-    m.key = split(m._vars('K', 128), 16)
+    plain = m.vars('IN', 32)
+    m.subkeys = split(m.vars('KS', 128), 16)
+    m.key = split(m.vars('K', 128), 16)
 
     polynomials = m.polynomials_fo(plain, 1)
     F = PolynomialSequence(polynomials)
-    F = inject(F, m._vars('IN', 32), [1]*32)
-    F = inject(F, m._vars('K', 128), [1]*128)
-    F = inject(F, m._vars('KS', 128), [1]*128)
+    F = inject_vars(F, m.vars('IN', 32), [1]*32)
+    F = inject_vars(F, m.vars('K', 128), [1]*128)
+    F = inject_vars(F, m.vars('KS', 128), [1]*128)
     result = sat_solve(F)
-    values = get_vars(result[0], m._vars('FO', 32, 1))
+    values = get_vars(result[0], m.vars('FO', 32, 1))
 
     plain = [1] * 32
     m.subkeys = [[1]*16] * 8
@@ -175,19 +175,19 @@ def test_fo():
 
 
 def test_round():
-    m = Misty()
+    m = Misty(8)
 
-    plain = m._vars('IN', 64)
-    m.subkeys = split(m._vars('KS', 128), 16)
-    m.key = split(m._vars('K', 128), 16)
+    plain = m.vars('IN', 64)
+    m.subkeys = split(m.vars('KS', 128), 16)
+    m.key = split(m.vars('K', 128), 16)
 
     polynomials = m.polynomials_round(plain, 1)
     F = PolynomialSequence(polynomials)
-    F = inject(F, m._vars('IN', 64), [1]*64)
-    F = inject(F, m._vars('K', 128), [1]*128)
-    F = inject(F, m._vars('KS', 128), [1]*128)
+    F = inject_vars(F, m.vars('IN', 64), [1]*64)
+    F = inject_vars(F, m.vars('K', 128), [1]*128)
+    F = inject_vars(F, m.vars('KS', 128), [1]*128)
     result = sat_solve(F)
-    values = get_vars(result[0], m._vars('F', 64, 2))
+    values = get_vars(result[0], m.vars('F', 64, 2))
 
     plain = [1] * 64
     m.subkeys = [[1]*16] * 8
@@ -206,18 +206,39 @@ def test_polynomial_system():
 
     polynomials = m.polynomial_system()
     F = PolynomialSequence(polynomials)
-    F = inject(F, m._vars('IN', 64), m.get_bits(plaintext, 8))
-    F = inject(F, m._vars('K', 128), m.get_bits(key, 16))
-    F = inject(F, m._vars('KS', 128), m.get_bits(subkey, 16))
+    F = inject_vars(F, m.vars('IN', 64), m.get_bits(plaintext, 8))
+    F = inject_vars(F, m.vars('K', 128), m.get_bits(key, 16))
+    F = inject_vars(F, m.vars('KS', 128), m.get_bits(subkey, 16))
     result = sat_solve(F)
-    values = get_vars(result[0], m._vars('OUT', 64))
+    values = get_vars(result[0], m.vars('OUT', 64))
 
     m.key_schedule(m.get_bits(key, 16))
     expected = m.encipher(m.get_bits(plaintext, 8), m.get_bits(key, 16))
     return values == expected
 
-print 'Test equations FL...', test_fl()
-print 'Test equations FI...', test_fi()
-print 'Test equations FO...', test_fo()
-print 'Test equations round...', test_round()
-print 'Test equations Misty...', test_polynomial_system()
+
+def test_all():
+    m = Misty(8)
+    print 'Test Misty...', m.selftest()
+    print 'Test equations FL...', test_fl()
+    print 'Test equations FI...', test_fi()
+    print 'Test equations FO...', test_fo()
+    print 'Test equations round...', test_round()
+    print 'Test equations Misty...', test_polynomial_system()
+
+
+plaintext = 0x0123456789ABCDEF
+ciphertext = 0X8B1DA5F56AB3D07C
+
+m = Misty(2)
+print 'constructing polynomials...'
+polynomials = m.polynomial_system()
+print 'constructing equations system...'
+F = PolynomialSequence(polynomials)
+print 'injecting variables...'
+F = inject_vars(F, m.vars('IN', 64), m.get_bits(plaintext, 8))
+F = inject_vars(F, m.vars('OUT', 64), m.get_bits(ciphertext, 8))
+print 'solving system...'
+result = sat_solve(F)
+print 'Done.'
+key = get_vars(result[0], m.vars('K', 128))

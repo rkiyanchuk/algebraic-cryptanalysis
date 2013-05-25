@@ -466,7 +466,7 @@ class Misty(object):
             var_names = [self.prefix + var for var in var_names]
         return var_names
 
-    def _vars(self, name, nbits, round=''):
+    def vars(self, name, nbits, round=''):
         """Construct variables in predefined Misty ring.
 
         Refer to `_varstrs()` and `gen_ring()` for details.
@@ -549,10 +549,10 @@ class Misty(object):
         polynomials = list()
 
         ## Generate variables for given round
-        vars_kl1 = self._vars('FL_KL1', 16, i)
-        vars_kl2 = self._vars('FL_KL2', 16, i)
-        vars_xor = self._vars('FL_XOR', 16, i)
-        vars_out = self._vars('FL', 32, i)
+        vars_kl1 = self.vars('FL_KL1', 16, i)
+        vars_kl2 = self.vars('FL_KL2', 16, i)
+        vars_xor = self.vars('FL_XOR', 16, i)
+        vars_out = self.vars('FL', 32, i)
 
         temp = vector_do(operator.__and__, left, kl1)
         polynomials.extend(vector_do(operator.__xor__, temp, vars_kl1))
@@ -586,11 +586,11 @@ class Misty(object):
         d9 = x[0:self.fi_left_size]
         d7 = x[self.fi_left_size:]
 
-        vars_fi = self._vars('FI' + str(subround), 16, r)
-        vars_s9 = self._vars('FI' + str(subround) + '_S9', 9, r)
-        vars_s7 = self._vars('FI' + str(subround) + '_S7', 7, r)
-        vars_ss9 = self._vars('FI' + str(subround) + '_SS9', 9, r)
-        vars_ki2 = self._vars('FI' + str(subround) + '_KI2', 9, r)
+        vars_fi = self.vars('FI' + str(subround), 16, r)
+        vars_s9 = self.vars('FI' + str(subround) + '_S9', 9, r)
+        vars_s7 = self.vars('FI' + str(subround) + '_S7', 7, r)
+        vars_ss9 = self.vars('FI' + str(subround) + '_SS9', 9, r)
+        vars_ki2 = self.vars('FI' + str(subround) + '_KI2', 9, r)
 
         polynomials = list()
         pad = [self.ring(0)] * 2
@@ -627,13 +627,13 @@ class Misty(object):
         ko3 = self.kindex(self.KEY_KO3, i)
         ko4 = self.kindex(self.KEY_KO4, i)
 
-        vars_fo = self._vars('FO', 32, i)
-        vars_ko1 = self._vars('FO_KO1', 16, i)
-        vars_ko2 = self._vars('FO_KO2', 16, i)
-        vars_ko3 = self._vars('FO_KO3', 16, i)
-        vars_fi1 = self._vars('FI1', 16, i)
-        vars_fi2 = self._vars('FI2', 16, i)
-        vars_fi3 = self._vars('FI3', 16, i)
+        vars_fo = self.vars('FO', 32, i)
+        vars_ko1 = self.vars('FO_KO1', 16, i)
+        vars_ko2 = self.vars('FO_KO2', 16, i)
+        vars_ko3 = self.vars('FO_KO3', 16, i)
+        vars_fi1 = self.vars('FI1', 16, i)
+        vars_fi2 = self.vars('FI2', 16, i)
+        vars_fi3 = self.vars('FI3', 16, i)
 
         polynomials = list()
 
@@ -663,12 +663,12 @@ class Misty(object):
         left = data[0:self.halfblock_size]
         right = data[self.halfblock_size:]
 
-        vars_fl1 = self._vars('FL', 32, i)
-        vars_fl2 = self._vars('FL', 32, i + 1)
-        vars_fo1 = self._vars('FO', 32, i)
-        vars_fo2 = self._vars('FO', 32, i + 1)
-        vars_fx = self._vars('FX', 32, i)
-        vars_f = self._vars('F', 64, i + 1)
+        vars_fl1 = self.vars('FL', 32, i)
+        vars_fl2 = self.vars('FL', 32, i + 1)
+        vars_fo1 = self.vars('FO', 32, i)
+        vars_fo2 = self.vars('FO', 32, i + 1)
+        vars_fx = self.vars('FX', 32, i)
+        vars_f = self.vars('F', 64, i + 1)
 
         polynomials = list()
 
@@ -689,21 +689,21 @@ class Misty(object):
     def polynomial_system(self):
         """Construct polynomials system for Misty cipher."""
 
-        plain = self._vars('IN', 64)
-        self.key = split(self._vars('K', 128), 16)
-        self.subkeys = split(self._vars('KS', 128), 16)
+        plain = self.vars('IN', 64)
+        self.key = split(self.vars('K', 128), 16)
+        self.subkeys = split(self.vars('KS', 128), 16)
 
         polynomials = list()
 
         polynomials.extend(self.polynomials_round(plain, 1))  # R2_F variables introduced.
         for i in range(3, self.nrounds + 1, 2):
-            vars_f_prev = self._vars('F', 64, i - 1)
+            vars_f_prev = self.vars('F', 64, i - 1)
             polynomials.extend(self.polynomials_round(vars_f_prev, i))
 
-        vars_f = self._vars('F', 64, self.nrounds)
-        vars_fl1 = self._vars('FL', 32, self.nrounds + 1)
-        vars_fl2 = self._vars('FL', 32, self.nrounds + 2)
-        vars_out = self._vars('OUT', 64)
+        vars_f = self.vars('F', 64, self.nrounds)
+        vars_fl1 = self.vars('FL', 32, self.nrounds + 1)
+        vars_fl2 = self.vars('FL', 32, self.nrounds + 2)
+        vars_out = self.vars('OUT', 64)
 
         left = vars_f[0:self.halfblock_size]
         right = vars_f[self.halfblock_size:]
