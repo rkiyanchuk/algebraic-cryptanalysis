@@ -99,13 +99,19 @@ class Misty(object):
         bytes = [reverse(b) for b in bytes]
         return Integer(flatten(bytes), 2)
 
-    def __init__(self):
+    def __init__(self, nrounds, prefix=''):
         """Create Misty cipher object.
 
         It's a full scale cipher as well as its polynomial system generator.
 
+        Args:
+            nrounds: Number of enciphering rounds.
+            prefix: Prefix used for variables identification during polynomial
+                system construction.
+
         """
-        self.nrounds = 4
+        self.nrounds = nrounds
+        self.prefix = prefix
         self.block_size = 64
         self.halfblock_size = self.block_size // 2
         self.halfblock_size_fo = self.halfblock_size // 2
@@ -447,13 +453,18 @@ class Misty(object):
             List of strings with variables names.
 
         """
-        s = self._varformatstr(name)
         round = str(round)
+        s = self._varformatstr(name)
         if not round:
             # Exclude round prefix.
             s = s[s.find('_') + 1:]
-            return [s % (i) for i in range(nbits)]
-        return [s % (round, i) for i in range(nbits)]
+            var_names = [s % (i) for i in range(nbits)]
+        else:
+            var_names = [s % (round, i) for i in range(nbits)]
+        if not name == 'K' and not name == 'KS':
+            # Include polynomial system prefix.
+            var_names = [self.prefix + var for var in var_names]
+        return var_names
 
     def _vars(self, name, nbits, round=''):
         """Construct variables in predefined Misty ring.

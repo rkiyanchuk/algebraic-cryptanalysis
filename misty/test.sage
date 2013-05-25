@@ -77,6 +77,31 @@ def get_vars(solution, vars):
     return values
 
 
+def join_systems(mqsystems):
+    """Join polynomial systems into one.
+
+    Key variables aren't prefixed since they must be the same through all
+    systems. Joined systems with different keys injected are incorrect.
+
+    Args:
+        isntances: Cipher instances corresponding to polynomial systems.
+
+    Returns:
+        New polynomial system constructed from provided systems.
+
+    """
+    print 'getting var_names...'
+    var_names = flatten([system.ring().variable_names() for system in mqsystems])
+    print 'generating common ring...'
+    common_vars = list(set(var_names))
+    common_ring = BooleanPolynomialRing(len(common_vars), common_vars, order='degrevlex')
+    print 'constructing joined system...'
+    new_mqsystem = PolynomialSequence([], common_ring)
+    for s in mqsystems:
+        new_mqsystem.extend(list(s))
+    return new_mqsystem
+
+
 load('misty.sage')
 m = Misty()
 print 'Test Misty...', m.selftest()
@@ -173,7 +198,7 @@ def test_round():
 
 
 def test_polynomial_system():
-    m = Misty()
+    m = Misty(8, 'a')
 
     plaintext = 0x0123456789ABCDEF
     key = 0x00112233445566778899AABBCCDDEEFF
