@@ -8,7 +8,7 @@ MISTY block cipher polynomial system generator.
 
 __author__ = 'Ruslan Kiianchuk'
 __email__ = 'ruslan.kiianchuk@gmail.com'
-__version__ = '0.9'
+__version__ = '1.0'
 
 
 import operator
