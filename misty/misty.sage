@@ -269,7 +269,7 @@ class Misty(object):
         left = vector_do(operator.__xor__, left, temp)
         return left + right
 
-#    @groebner_basis
+    @groebner_basis
     def s7(self, x, r=None):
         """Substitute with Misty S7 SBox.
 
@@ -299,7 +299,7 @@ class Misty(object):
             return polynomials
 
 
-#    @groebner_basis
+    @groebner_basis
     def s9(self, x, r=None):
         """Substitute with Misty S9 SBox. """
         y = [0] * len(x)

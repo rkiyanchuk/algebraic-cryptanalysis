@@ -88,12 +88,6 @@ def join_systems(mqsystems):
     Key variables aren't prefixed since they must be the same through all
     systems. Joined systems with different keys injected are incorrect.
 
-    Args:
-        isntances: Cipher instances corresponding to polynomial systems.
-
-    Returns:
-        New polynomial system constructed from provided systems.
-
     """
     print 'getting var_names...'
     var_names = flatten([system.ring().variable_names() for system in mqsystems])
