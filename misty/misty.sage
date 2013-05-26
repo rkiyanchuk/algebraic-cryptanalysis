@@ -269,7 +269,7 @@ class Misty(object):
         left = vector_do(operator.__xor__, left, temp)
         return left + right
 
-    @groebner_basis
+    #@groebner_basis
     def s7(self, x, r=None):
         """Substitute with Misty S7 SBox.
 
@@ -299,7 +299,7 @@ class Misty(object):
             return polynomials
 
 
-    @groebner_basis
+    #@groebner_basis
     def s9(self, x, r=None):
         """Substitute with Misty S9 SBox. """
         y = [0] * len(x)
@@ -476,7 +476,7 @@ class Misty(object):
             var_names = [s % (i) for i in range(start_from, start_from + nbits)]
         else:
             var_names = [s % (round, i) for i in range(start_from, start_from + nbits)]
-        if not name == 'K' and not name == 'KS':
+        if not name == 'K' and not name == 'KS' and not name.startswith('FIKS'):
             # Include polynomial system prefix.
             var_names = [self.prefix + var for var in var_names]
         return var_names
@@ -757,4 +757,4 @@ class Misty(object):
         polynomials.extend(self.polynomials_fl(right,  self.nrounds + 2))
         polynomials.extend(vector_do(operator.__xor__, vars_fl1, vars_out[32:64]))
         polynomials.extend(vector_do(operator.__xor__, vars_fl2, vars_out[0:32]))
-        return polynomials
+        return PolynomialSequence(polynomials)

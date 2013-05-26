@@ -89,12 +89,9 @@ def join_systems(mqsystems):
     systems. Joined systems with different keys injected are incorrect.
 
     """
-    print 'getting var_names...'
     var_names = flatten([system.ring().variable_names() for system in mqsystems])
-    print 'generating common ring...'
     common_vars = list(set(var_names))
     common_ring = BooleanPolynomialRing(len(common_vars), common_vars, order='degrevlex')
-    print 'constructing joined system...'
     new_mqsystem = PolynomialSequence([], common_ring)
     for s in mqsystems:
         new_mqsystem.extend(list(s))
@@ -234,20 +231,64 @@ def test_all():
     print 'Test equations FO...', test_fo()
     print 'Test equations round...', test_round()
     print 'Test equations Misty...', test_polynomial_system()
+    print 'Test equations key schedule...', test_key_schedule()
 
 
-plaintext = 0x0123456789ABCDEF
-ciphertext = 0X8B1DA5F56AB3D07C
+def solve_single_system():
+    m = Misty(2)
+    plaintext = [1] * 64
+    key = [1] * 128
+    m.key_schedule(key)
+    ciphertext = m.encipher(plaintext, key)
 
-m = Misty(2)
-print 'constructing polynomials...'
-polynomials = m.polynomial_system()
-print 'constructing equations system...'
-F = PolynomialSequence(polynomials)
-print 'injecting variables...'
-F = inject_vars(F, m.vars('IN', 64), m.get_bits(plaintext, 8))
-F = inject_vars(F, m.vars('OUT', 64), m.get_bits(ciphertext, 8))
-print 'solving system...'
-result = sat_solve(F)
-print 'Done.'
-key = get_vars(result[0], m.vars('K', 128))
+    print 'constructing polynomials...'
+    polynomials = m.polynomial_system()
+    print 'constructing equations system...'
+    F = PolynomialSequence(polynomials)
+    print 'injecting variables...'
+    F = inject_vars(F, m.vars('IN', 64), plaintext)
+    F = inject_vars(F, m.vars('OUT', 64), ciphertext)
+    print 'solving system...'
+    result = sat_solve(F)
+    print 'Done.'
+    key = get_vars(result[0], m.vars('K', 128))
+    print key
+
+
+def solve_joined_systems():
+    nrounds = 2
+    instances = [Misty(nrounds, prefix) for prefix in ['a', 'b']]
+
+    print 'constructing equation systems...'
+    eqsystems = [i.polynomial_system() for i in instances]
+
+    inputs = [[0] * 64, [1] * 64]
+    key = [1] * 128
+    outputs = list()
+    for i, m in enumerate(instances):
+        m.key_schedule(key)
+        outputs.append(m.encipher(inputs[i], key))
+    print 'INPUTS:'
+    for i in inputs:
+        print hex(instances[0].get_integer(i))
+    print 'KEY:'
+    print hex(instances[0].get_integer(key))
+    print 'OUTPUTS:'
+    for i in outputs:
+        print hex(instances[0].get_integer(i))
+
+    print '\ninjecting known variables...'
+    for i, m in enumerate(instances):
+        eqsystems[i] = inject_vars(eqsystems[i], m.vars('IN', 64), inputs[i])
+        eqsystems[i] = inject_vars(eqsystems[i], m.vars('OUT', 64), outputs[i])
+
+    for i in eqsystems:
+        print i.__str__()
+
+    print '\ncombining equation systems...'
+    eqsystem = join_systems(eqsystems)
+    print eqsystem.__str__()
+
+    print '\nsolving equation system...'
+    solution = sat_solve(eqsystem)[0]
+    print solution
